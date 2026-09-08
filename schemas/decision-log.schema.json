@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Decision Log Entry",
+  "description": "One entry written by decision-recorder. Entries accumulate at .claude/state/decision-log.md (or an equivalent append-only store) and are never skipped, regardless of a story's context_mode — context_mode governs what a story reads on the way in, never what it writes on the way out.",
+  "type": "object",
+  "required": ["id", "date", "story_id", "decision"],
+  "properties": {
+    "id": { "type": "string" },
+    "date": { "type": "string", "format": "date" },
+    "story_id": {
+      "type": "string",
+      "description": "The story this decision was recorded during, or 'program' if recorded during project-scoper."
+    },
+    "context": { "type": "string" },
+    "decision": { "type": "string" },
+    "reasoning": { "type": "string" },
+    "alternatives_considered": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "consequences": { "type": "string" },
+    "tradeoffs": { "type": "string" }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Task Graph",
+  "description": "Output of implementation-planner for one story. Consumed by feature-orchestrator (step 11) to sequence and parallelize implementer runs, and by story-converter in plan mode to create/sync tracked tickets. Saved at .claude/state/stories/<story-id>/plan.json",
+  "type": "object",
+  "required": ["story_id", "tasks"],
+  "properties": {
+    "story_id": { "type": "string" },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "description", "depends_on", "parallel_group", "files_touched", "acceptance_criteria"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable identifier for this task. This is the key story-converter matches tickets against on every sync — don't regenerate it across amendments."
+          },
+          "description": { "type": "string" },
+          "depends_on": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Task ids that must reach status 'validated' before this task can start."
+          },
+          "parallel_group": {
+            "type": ["string", "null"],
+            "description": "Tasks sharing a group id may run as concurrent implementer subagent sessions. Null means this task always runs alone. Two tasks may only share a group if their files_touched sets are fully disjoint."
+          },
+          "files_touched": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1,
+            "description": "Every file this task creates or modifies. implementer is not authorized to touch anything outside this list — see the Scope amendment loop in feature-orchestrator for the documented exception path."
+          },
+          "acceptance_criteria": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "in_progress", "blocked_scope_gap", "validated", "failed"],
+            "default": "pending"
+          }
+        }
+      }
+    }
+  }
+}

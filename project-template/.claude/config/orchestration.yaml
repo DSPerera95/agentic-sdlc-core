@@ -1,0 +1,24 @@
+# Project-specific settings read by feature-orchestrator and project-scoper.
+# Skill logic in .claude/skills/ (installed via agentic-sdlc-core's install.ps1) should never
+# hardcode any of these values directly — that's what caused the original
+# build-feature bug this project was generalized away from.
+
+agentic_sdlc_core_version: "1.0.0"   # keep in sync with the -Ref passed to install.ps1
+
+# Default context_mode assigned to a story when story-converter (spec mode)
+# has no clear reason to override it. Can still be overridden per story.
+context_mode_default: decision-log-only
+
+risk_thresholds:
+  l1_max_files: 1        # above this, risk-classifier should not return L1
+  l1_excludes:            # never classify these as L1 regardless of file count
+    - auth
+    - payments
+    - migrations
+
+ticket_system:
+  provider: jira          # jira | azure-devops
+  project_key: CHANGE_ME
+  # board_id / org_url / etc. as needed by your Jira or ADO integration
+
+state_dir: .claude/state

@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Story Backlog",
+  "description": "Output of story-converter in spec mode, produced once per project by project-scoper. Each story is later handed off to an independent feature-orchestrator run.",
+  "type": "object",
+  "required": ["project", "stories"],
+  "properties": {
+    "project": { "type": "string" },
+    "program_spec_ref": {
+      "type": "string",
+      "description": "Path or reference to the approved program-level spec this backlog was generated from."
+    },
+    "stories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "acceptance_criteria", "context_mode"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "acceptance_criteria": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "context_mode": {
+            "type": "string",
+            "enum": ["full-spec", "decision-log-only", "independent"],
+            "description": "full-spec: story's feature-orchestrator run loads the whole program spec. decision-log-only: loads just the shared decision log. independent: loads neither. In every mode, this story's own decision-recorder writes still happen unconditionally."
+          },
+          "depends_on": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Other story ids this one has a genuine dependency on, e.g. a contract it consumes."
+          }
+        }
+      }
+    }
+  }
+}
