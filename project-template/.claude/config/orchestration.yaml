@@ -3,7 +3,7 @@
 # hardcode any of these values directly — that's what caused the original
 # build-feature bug this project was generalized away from.
 
-agentic_sdlc_core_version: "1.0.0"   # keep in sync with the -Ref passed to install.ps1
+agentic_sdlc_core_version: "2.0.0"   # keep in sync with the -Ref passed to install.ps1
 
 # Default context_mode assigned to a story when story-converter (spec mode)
 # has no clear reason to override it. Can still be overridden per story.

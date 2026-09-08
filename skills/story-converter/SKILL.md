@@ -1,13 +1,13 @@
 ---
 name: story-converter
 description: >
-  Converts either a program-level spec or an approved implementation plan into Jira or Azure DevOps epics, user stories, tasks, subtasks, and acceptance criteria. Two modes: spec mode (program spec → initial story backlog, no technical tasks yet — used once per project by /project-scoper) and plan mode (a story's implementation plan → tracked tasks, created when the plan is approved and synced as it changes or completes — used repeatedly across a /feature-orchestrator run).
+  Converts a program-level spec into Jira or Azure DevOps epics and user stories. This is the only place stories get created in the tracker — one story, one ticket. Also syncs an existing story's ticket, but only when /feature-orchestrator's amendment loops surface something that changed, or when a story reaches a terminal status.
 user-invocable: true
 ---
 
 ## Spec mode — program spec into a story backlog
 
-Used once per project, by /project-scoper, before any story has its own implementation plan.
+Used once per project, by /project-scoper, before any story has its own implementation plan. This is where tickets get created — nowhere else.
 
 Convert the approved program-level spec into:
 - epics
@@ -15,29 +15,25 @@ Convert the approved program-level spec into:
 - dependencies between stories, where genuinely required — avoid inventing sequencing that doesn't exist
 - a `context_mode` per story: `full-spec`, `decision-log-only`, or `independent`, based on whether the story touches shared or foundational surface. Default to the project's configured default; override per story only with clear reason (e.g. a story modifying the shared auth layer gets `full-spec` even if the project default is `independent`)
 
-Do not generate technical tasks or subtasks in this mode. No implementation plan exists yet for any story, so there's nothing to decompose into tasks — stories at this stage are acceptance-criteria-level only.
+Create one ticket per story in the configured ticket system, and record the resulting ticket id on the story entry. Do not generate technical tasks or subtasks in this mode. No implementation plan exists yet for any story, so there's nothing to decompose into tasks — a story's ticket stays at the acceptance-criteria level until something during implementation gives reason to update it.
 
-## Plan mode — implementation plan into tracked work
+## Plan mode — syncing a story's existing ticket
 
-Used per story, invoked multiple times across a single /feature-orchestrator run rather than once at the end:
+Used per story, but only when /feature-orchestrator calls it — never on a routine schedule, and never right after a plan is approved. There is exactly one ticket per story, created back in spec mode; plan mode updates that same ticket, it never creates a new one.
 
-- **First invocation** — right after the plan is approved, before implementation starts. Create one ticket per task id, carrying that task's description, `depends_on`, `parallel_group`, `files_touched`, and acceptance criteria. This is what makes tasks visible and assignable while work happens, not just after — the point where tasks in the same `parallel_group` could be picked up by different engineers, not only AI subagents.
-- **Later invocations** — whenever the Scope amendment loop or Story amendment loop changes the plan, and once more at story completion. These are syncs, not fresh conversions: match against ticket-to-task-id mappings already created, update existing tickets rather than duplicating them, add tickets only for genuinely new tasks, and mark tickets complete at final sync.
+/feature-orchestrator invokes this in three situations, and no others:
+- **Scope amendment** — /implementer needed a file outside its declared `files_touched`. Reflect the amended scope on the story's ticket.
+- **Story amendment** — acceptance criteria changed after the spec was approved. Reflect the new criteria and note what changed and why.
+- **Story completion** — the story passed validation. Mark the ticket's status complete.
 
-Convert into:
-- technical tasks (one per task id)
-- subtasks, where a task's scope genuinely needs breaking down further
-- acceptance criteria — inherited from the story, refined if the plan revealed detail the story level didn't have
-- dependencies, mapped directly from `depends_on`
+In every case, this is an update to the one existing ticket, not a fresh conversion: pull the ticket id from the story's state, describe the specific delta (what changed, not the whole plan restated), and leave everything else on the ticket untouched. The full task graph (`depends_on`, `parallel_group`, `files_touched` per task) stays internal to /implementation-planner's output — it drives how /feature-orchestrator sequences and parallelizes /implementer, but it isn't mirrored into the tracker as separate tasks or subtasks.
 
 ## Both modes
 
 Ensure:
-- stories/tasks are independently understandable
-- tasks are implementation-oriented
+- stories are independently understandable
 - acceptance criteria are measurable
 - work remains properly scoped
-- tasks map directly to implementation work
 
 Prefer:
 - small actionable stories
@@ -46,10 +42,8 @@ Prefer:
 
 Avoid:
 - vague stories
-- oversized tasks
-- unrelated work grouping
 - ambiguous acceptance criteria
-- generating technical tasks in spec mode, or omitting them in plan mode — each mode's output shape is deliberate, not interchangeable
-- duplicating a ticket for a task id that already has one — later plan-mode invocations sync existing tickets, they don't recreate them
+- creating a second ticket for a story that already has one — plan mode always updates the existing ticket by id
+- restating the whole story or plan on every sync — describe the delta, not the total state
 
 Structure output cleanly for Jira or Azure DevOps import.

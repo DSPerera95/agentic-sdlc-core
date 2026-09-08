@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.0.0 — Consolidated to one ticket per story
+
+**Breaking**
+- `story-converter` now creates a ticket in exactly one place: spec mode, once per story, at `project-scoper` time. Removed the automatic per-task ticket creation that previously ran as step 10a of `feature-orchestrator`, right after plan approval.
+- Plan mode no longer converts a task graph into per-task tickets/subtasks. It now only updates the story's single existing ticket, and only when invoked from one of three places: the Scope amendment loop, the Story amendment loop, or the story-completion step. There is no routine or scheduled call to `story-converter` inside `feature-orchestrator` anymore — see the new `Never` guardrail against exactly that.
+- `story-backlog.schema.json` — added required `ticket_id` per story, set when `story-converter` creates that story's ticket in spec mode.
+- Project state shape changed: `.claude/state/stories/<id>/tickets.json` (task id → ticket id map) is replaced by `ticket.json` (the story's single ticket id plus a short sync log). Projects on 1.0.0 should reconcile any existing per-task tickets manually before adopting 2.0.0 — this version doesn't migrate them.
+
+**Why**: the task-level ticket layer mainly served one case — different *engineers* splitting a single story's parallel tasks between themselves. The common case is AI subagents handling that parallelism, where per-task tickets added tracker noise and permanent create/sync complexity for little benefit. The task graph (`depends_on`/`parallel_group`/`files_touched`) still drives how `feature-orchestrator` sequences and parallelizes `implementer` — it's just no longer mirrored into the ticket system.
+
 ## 1.0.0 — Initial versioned release
 
 Generalized from a single-project skill set into a reusable, two-tier orchestration layer.

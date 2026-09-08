@@ -14,10 +14,14 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "title", "acceptance_criteria", "context_mode"],
+        "required": ["id", "title", "acceptance_criteria", "context_mode", "ticket_id"],
         "properties": {
           "id": { "type": "string" },
           "title": { "type": "string" },
+          "ticket_id": {
+            "type": "string",
+            "description": "The one ticket story-converter created for this story in spec mode. feature-orchestrator's amendment loops and completion sync (plan mode) always update this same ticket — nothing downstream creates a second one."
+          },
           "acceptance_criteria": {
             "type": "array",
             "items": { "type": "string" }
