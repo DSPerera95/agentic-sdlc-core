@@ -7,16 +7,16 @@
     Reads .claude/state/decision-log.jsonl, keeps the most recent entries (bounded by
     both an age cutoff and a max count), and moves everything else into
     .claude/state/decision-log-archive/<date>.jsonl with `reasoning`,
-    `alternatives_considered`, and `tradeoffs` stripped — keeping `id`, `date`,
+    `alternatives_considered`, and `tradeoffs` stripped - keeping `id`, `date`,
     `story_id`, `decision`, and `consequences` only. Appends one breadcrumb entry to
     the hot log noting what was rotated and where it went, continuing the same id
     sequence rather than resetting it.
 
     An entry is archived if it's older than -MaxAgeMonths, OR if keeping it would put
-    the hot log over -MaxEntries (the oldest entries beyond that count go too) —
+    the hot log over -MaxEntries (the oldest entries beyond that count go too) -
     whichever threshold it crosses first.
 
-    Run manually and periodically — e.g. before kicking off /project-scoper again on
+    Run manually and periodically - e.g. before kicking off /project-scoper again on
     an existing project. Not run automatically by anything else in this system.
 
 .PARAMETER StateDir
@@ -24,12 +24,12 @@
 
 .PARAMETER MaxAgeMonths
     Entries older than this many months get archived, regardless of count. Defaults to
-    6 — keep this in sync with decision_log_rotation.max_age_months in
+    6 - keep this in sync with decision_log_rotation.max_age_months in
     config/orchestration.yaml; this script doesn't read that file itself.
 
 .PARAMETER MaxEntries
     Only the most recent this-many entries are kept in the hot log, regardless of age.
-    Defaults to 200 — keep in sync with decision_log_rotation.max_entries in
+    Defaults to 200 - keep in sync with decision_log_rotation.max_entries in
     orchestration.yaml.
 
 .PARAMETER DryRun
@@ -60,7 +60,7 @@ $logPath    = Join-Path $StateDir "decision-log.jsonl"
 $archiveDir = Join-Path $StateDir "decision-log-archive"
 
 if (-not (Test-Path $logPath)) {
-    Write-Info "No decision-log.jsonl found at $logPath — nothing to rotate."
+    Write-Info "No decision-log.jsonl found at $logPath - nothing to rotate."
     exit 0
 }
 
@@ -70,7 +70,7 @@ $entries = @($lines | ForEach-Object { $_ | ConvertFrom-Json })
 Write-Info "$($entries.Count) entries found"
 
 if ($entries.Count -eq 0) {
-    Write-Info "Log is empty — nothing to rotate."
+    Write-Info "Log is empty - nothing to rotate."
     exit 0
 }
 
@@ -96,7 +96,7 @@ Write-Info "$($keep.Count) entries stay in the hot log"
 Write-Info "$($archive.Count) entries would be archived"
 
 if ($archive.Count -eq 0) {
-    Write-Ok "Nothing past the thresholds — no rotation needed."
+    Write-Ok "Nothing past the thresholds - no rotation needed."
     exit 0
 }
 
@@ -124,7 +124,7 @@ Write-Step "Writing archive -> $archiveFile"
 $archiveStripped | ForEach-Object { $_ | ConvertTo-Json -Compress } | Add-Content -Path $archiveFile
 Write-Ok "$($archiveStripped.Count) entries archived"
 
-# Continue the same id sequence for the breadcrumb — never reset or renumber
+# Continue the same id sequence for the breadcrumb - never reset or renumber
 $maxNum = 0
 function Update-MaxNum([object]$e) {
     if ($e.id -match 'DEC-(\d+)') {

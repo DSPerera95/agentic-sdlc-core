@@ -62,7 +62,7 @@ Not included in this core: `zoom-out` and `caveman`-style personal tools belong 
 From the root of the target project:
 
 ```powershell
-.\install.ps1 -RepoUrl "https://github.com/<org>/agentic-sdlc-core.git" -Ref "v5.4.0"
+.\install.ps1 -RepoUrl "https://github.com/<org>/agentic-sdlc-core.git" -Ref "v5.4.1"
 ```
 
 This installs:
@@ -91,7 +91,7 @@ This installs:
 Fill in `.claude/config/orchestration.yaml`:
 
 ```yaml
-agentic_sdlc_core_version: "5.4.0"
+agentic_sdlc_core_version: "5.4.1"
 context_mode_default: decision-log-only
 risk_thresholds:
   l1_max_files: 1

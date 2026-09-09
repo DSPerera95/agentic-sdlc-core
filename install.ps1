@@ -103,7 +103,7 @@ if (Test-Path $skillsSrc) {
     $skillCount = (Get-ChildItem $skillsDest -Directory).Count
     Write-Ok "$skillCount skills installed"
 } else {
-    Write-Warn "No skills/ folder found in the source repo at ref '$Ref' — skipped."
+    Write-Warn "No skills/ folder found in the source repo at ref '$Ref' - skipped."
 }
 
 if (Test-Path $agentsSrc) {
@@ -113,7 +113,7 @@ if (Test-Path $agentsSrc) {
     $agentCount = (Get-ChildItem $agentsDest -File -Filter "*.md").Count
     Write-Ok "$agentCount agents installed"
 } else {
-    Write-Warn "No agents/ folder found in the source repo at ref '$Ref' — skipped."
+    Write-Warn "No agents/ folder found in the source repo at ref '$Ref' - skipped."
 }
 
 if (Test-Path $schemasSrc) {
@@ -122,7 +122,7 @@ if (Test-Path $schemasSrc) {
     Copy-Item -Path "$schemasSrc\*" -Destination $schemasDest -Recurse -Force
     Write-Ok "Schemas installed"
 } else {
-    Write-Warn "No schemas/ folder found in the source repo at ref '$Ref' — skipped."
+    Write-Warn "No schemas/ folder found in the source repo at ref '$Ref' - skipped."
 }
 
 if (Test-Path $scriptsSrc) {
@@ -131,7 +131,7 @@ if (Test-Path $scriptsSrc) {
     Copy-Item -Path "$scriptsSrc\*" -Destination $scriptsDest -Recurse -Force
     Write-Ok "Scripts installed"
 } else {
-    Write-Warn "No scripts/ folder found in the source repo at ref '$Ref' — skipped."
+    Write-Warn "No scripts/ folder found in the source repo at ref '$Ref' - skipped."
 }
 
 # Record what's installed, so a re-run (or a teammate) can see the pinned version
@@ -174,7 +174,7 @@ if (Test-Path $templateRoot) {
     Install-TemplateFile "state\decision-log-archive\.gitkeep"
     Install-TemplateFile "state\stories\README.md"
 } else {
-    Write-Warn "No project-template/ folder found in the source repo at ref '$Ref' — skipped."
+    Write-Warn "No project-template/ folder found in the source repo at ref '$Ref' - skipped."
 }
 
 # --- Cleanup ------------------------------------------------------------------

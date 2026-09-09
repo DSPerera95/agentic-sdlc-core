@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.4.1 — Fixed a Windows PowerShell parsing crash in all three scripts
+
+**Fixed**
+- `install.ps1`, `scripts/rotate-decision-log.ps1`, `scripts/export-adrs.ps1` all contained em-dash characters in string literals and comments. Windows PowerShell 5.1 (the default on many Windows machines, distinct from PowerShell 7/pwsh Core) often reads a UTF-8 file without a BOM using the system ANSI codepage instead, which mangles multi-byte characters like an em-dash into garbage bytes - one of which can resemble a stray quote to the parser. The actual corruption and the reported error location aren't the same line; the parser doesn't fail until several lines later, when it runs out of file looking for a string terminator that was never actually missing at that point. Replaced every non-ASCII character across all three scripts with plain ASCII equivalents so this can't recur regardless of file encoding or PowerShell version on the machine running them.
+
 ## 5.4.0 — Architecture mode; ADR export
 
 **Added**

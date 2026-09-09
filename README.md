@@ -48,7 +48,7 @@ Both patch forward (spec/plan amendment, re-check parallel-safety, note the chan
 Run `install.ps1` from the root of the target project repo:
 
 ```powershell
-.\install.ps1 -RepoUrl "https://github.com/<org>/agentic-sdlc-core.git" -Ref "v5.4.0"
+.\install.ps1 -RepoUrl "https://github.com/<org>/agentic-sdlc-core.git" -Ref "v5.4.1"
 ```
 
 This clones agentic-sdlc-core at the pinned ref (a tag, branch, or commit), installs all skills into `.claude/skills/`, all agents into `.claude/agents/`, the schemas into `.claude/schemas/`, and both maintenance scripts into `.claude/scripts/`, records what's installed in `.claude/agentic-sdlc-core.version`, and scaffolds `.claude/CLAUDE.md`, `.claude/config/orchestration.yaml`, and `.claude/state/` from `project-template/` — but only creates files that don't already exist, so re-running it is safe and never clobbers a project's own config or decision log.

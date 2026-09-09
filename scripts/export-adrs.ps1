@@ -4,7 +4,7 @@
     individual ADR files.
 
 .DESCRIPTION
-    The decision log stays the source of truth — this script never modifies it,
+    The decision log stays the source of truth - this script never modifies it,
     only reads it. It filters for significance: architectural, and writes one
     Markdown file per entry into an ADR directory, in the numbered-file convention
     most ADR tooling (adr-tools, log4brains, etc.) expects.
@@ -13,11 +13,11 @@
     numbering scheme, so a file can always be traced back to its exact log line.
 
     Re-running this script regenerates all ADR files from the current log content
-    — it's a projection, not something to hand-edit. If an ADR file needs to
+    - it's a projection, not something to hand-edit. If an ADR file needs to
     change, the fix is a new decision-log entry (a correction is itself a decision
     worth recording), not editing the generated file directly.
 
-    Run manually, whenever you want the ADR files to reflect the current log —
+    Run manually, whenever you want the ADR files to reflect the current log -
     not run automatically by anything else in this system.
 
 .PARAMETER StateDir
@@ -140,11 +140,11 @@ foreach ($entry in $architectural) {
         $lines.Add("")
     }
     $lines.Add("---")
-    $lines.Add("*Generated from $($entry.id) in decision-log.jsonl. Don't hand-edit — correct the log instead and re-run export-adrs.ps1.*")
+    $lines.Add("*Generated from $($entry.id) in decision-log.jsonl. Don't hand-edit - correct the log instead and re-run export-adrs.ps1.*")
 
     Set-Content -Path $filePath -Value $lines.ToArray()
     $written++
 }
 
 Write-Ok "$written ADR file(s) written to $OutDir"
-Write-Info "This is a projection of the log, not a second source of truth — re-run after new architectural decisions land."
+Write-Info "This is a projection of the log, not a second source of truth - re-run after new architectural decisions land."
