@@ -1,15 +1,25 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Decision Log Entry",
-  "description": "One entry written by decision-recorder. Entries accumulate at .claude/state/decision-log.md (or an equivalent append-only store) and are never skipped, regardless of a story's context_mode — context_mode governs what a story reads on the way in, never what it writes on the way out.",
+  "description": "One entry written by decision-recorder, as a single line in .claude/state/decision-log.jsonl (JSON Lines — one compact object per line, append-only). Never skipped regardless of a story's context_mode — context_mode governs what a story reads on the way in, never what it writes on the way out. Older entries get rotated into .claude/state/decision-log-archive/ by scripts/rotate-decision-log.ps1, with reasoning, alternatives_considered, and tradeoffs stripped on archival — id, date, story_id, decision, and consequences survive rotation. Entries tagged significance: architectural can be rendered as ADR files via scripts/export-adrs.ps1; the log stays the source of truth, the ADR files are a generated view.",
   "type": "object",
   "required": ["id", "date", "story_id", "decision"],
   "properties": {
-    "id": { "type": "string" },
+    "id": {
+      "type": "string",
+      "pattern": "^DEC-[0-9]{4,}$",
+      "description": "Sequential, e.g. DEC-0001, DEC-0002. decision-recorder determines the next id by reading the current highest id in the hot log — rotation never reuses or renumbers ids, so this stays consistent across archival."
+    },
     "date": { "type": "string", "format": "date" },
     "story_id": {
       "type": "string",
-      "description": "The story this decision was recorded during, or 'program' if recorded during project-scoper."
+      "description": "The story this decision was recorded during, 'program' if recorded during project-scoper, or 'system' for automated log-maintenance entries such as a rotation breadcrumb."
+    },
+    "significance": {
+      "type": "string",
+      "enum": ["architectural", "routine"],
+      "default": "routine",
+      "description": "Set by whichever skill invokes decision-recorder, not inferred by decision-recorder itself — it doesn't have the context to judge this well, the caller does. 'architectural' marks entries worth rendering as an ADR via scripts/export-adrs.ps1 (service boundaries, data ownership, integration patterns, irreversible or foundational choices); everything else defaults to 'routine'."
     },
     "context": { "type": "string" },
     "decision": { "type": "string" },

@@ -10,6 +10,11 @@
       "type": "string",
       "description": "Path or reference to the approved program-level spec this backlog was generated from."
     },
+    "architecture_mode": {
+      "type": "boolean",
+      "default": false,
+      "description": "Set once by project-scoper when architecture mode was explicitly requested at invocation. Persists past that single run so story-converter's context_mode defaulting, a later project-scoper re-run, or a human can see it without re-deriving anything. When true, grill-me and spec-writer were told to go deep on service boundaries/data ownership/integration patterns during scoping rather than deferring that detail per-story, and story-converter should weigh it toward more stories defaulting to full-spec context_mode."
+    },
     "stories": {
       "type": "array",
       "items": {
@@ -34,7 +39,7 @@
           "depends_on": {
             "type": "array",
             "items": { "type": "string" },
-            "description": "Other story ids this one has a genuine dependency on, e.g. a contract it consumes."
+            "description": "Other story ids this one has a genuine contract dependency on — e.g. this story consumes an API, schema, or interface another story builds, and literally cannot be correctly implemented without knowing its shape. This is the only reason to set depends_on. A story that merely might benefit from knowing a decision another story is likely to make is not a dependency — that's what context escalation (see feature-orchestrator) is for, and it doesn't block anything. Sequencing 5 of 10 stories on contract dependencies alone should be rare; sequencing them because of a decision one might want to be aware of would defeat the point of running stories in parallel at all."
           }
         }
       }

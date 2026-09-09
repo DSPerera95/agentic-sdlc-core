@@ -1,6 +1,6 @@
 # agentic-sdlc-core — How It Works
 
-A two-tier, multi-agent orchestration layer for AI-assisted software development, built on Claude Code skills. This document explains the architecture, how to set it up in a project, how to use it day to day, and walks through one feature end to end.
+A two-tier, multi-agent orchestration layer for AI-assisted software development, built on Claude Code skills and subagents. This document explains the architecture, how to set it up in a project, how to use it day to day, and walks through one feature end to end.
 
 ---
 
@@ -25,24 +25,26 @@ flowchart TD
 
 ---
 
-## 2. The skill set
+## 2. Skills and agents
 
-| Skill | Tier | Role |
-|---|---|---|
-| `project-scoper` | Program | Entry point for a new project — turns a PRD or existing repo into an approved story backlog |
-| `feature-orchestrator` | Story | Entry point for one story — controls the full spec → plan → implement → validate workflow |
-| `build-feature` | Story | Lightweight fast path for low-risk (L1) stories — single scope confirmation instead of the full chain |
-| `repo-discovery` | Both | Analyzes the codebase — broad pass at program scoping, focused pass per story |
-| `risk-classifier` | Story | Classifies work as L1 / L2 / L3 and determines how much rigor the story needs |
-| `grill-me` | Both | Interviews the user to resolve ambiguity — scope-defining at program level, feature-defining at story level |
-| `spec-writer` | Both | Produces the spec — program-level scope spec, or a story-level implementation spec |
-| `implementation-planner` | Story | Converts an approved spec into a task graph: `depends_on`, `parallel_group`, `files_touched` per task |
-| `implementer` | Story | Implements exactly one task, scoped strictly to its declared `files_touched` |
-| `validator` | Story | Checks an implementation against acceptance criteria, conventions, and regressions |
-| `bug-fixer` | Story | Diagnoses and fixes a failing check with a minimal, targeted change |
-| `story-converter` | Both | The only place tickets get created — spec mode, once, by `project-scoper`. Plan mode only ever updates that same ticket, and only when `feature-orchestrator` has a scope amendment, a story amendment, or a completion to report |
-| `decision-recorder` | Both | Records architecture/scope decisions to a shared, append-only log — written unconditionally regardless of a story's `context_mode` |
-| `context-compressor` | Story | Compresses accumulated context to control token usage on long-running stories |
+Two different primitives, deliberately not interchangeable. **Skills** run inline in the calling session — no isolation, full access to whatever's already in context. **Agents** are fixed-identity subagents: always isolated in a fresh context, always on a pinned model, invoked with explicit input and returning a single result.
+
+| Name | Type | Tier | Role |
+|---|---|---|---|
+| `project-scoper` | Skill | Program | Entry point for a new project — turns a PRD or existing repo into an approved story backlog |
+| `feature-orchestrator` | Skill | Story | Entry point for one story — controls the full spec → plan → implement → validate workflow |
+| `build-feature` | Skill | Story | Lightweight fast path for low-risk (L1) stories — single scope confirmation instead of the full chain |
+| `repo-discovery` | Skill | Both | Analyzes the codebase — broad pass at program scoping, focused pass per story |
+| `risk-classifier` | **Agent** | Story | Classifies work as L1 / L2 / L3 and determines how much rigor the story needs. Haiku 4.5 |
+| `grill-me` | Skill | Both | Interviews the user to resolve ambiguity — scope-defining at program level, feature-defining at story level. Interactive, so it can't be an agent: a subagent runs autonomously and returns one result, with no way to pause and take a turn with the actual person |
+| `spec-writer` | Skill | Both | Produces the spec — program-level scope spec, or a story-level implementation spec |
+| `implementation-planner` | Skill | Story | Converts an approved spec into a task graph: `depends_on`, `parallel_group`, `files_touched` per task |
+| `implementer` | **Agent** | Story | Implements exactly one task, scoped strictly to its declared `files_touched`. Always isolated, always Sonnet 5, high effort — no conditional inline path |
+| `validator` | **Agent** | Story | Checks acceptance criteria, conventions, and regressions, and code-reviews the diff for security, performance, and code quality — findings tagged blocking or non-blocking. Sonnet 5; effort scales with risk tier (low/medium/high) |
+| `bug-fixer` | Skill | Story | Diagnoses and fixes a failing check with a minimal, targeted change |
+| `story-converter` | **Agent** | Both | The only place tickets get created — spec mode, once, by `project-scoper`. Plan mode only ever updates that same ticket, and only when `feature-orchestrator` has a scope amendment, a story amendment, or a completion to report. Haiku 4.5 |
+| `decision-recorder` | Skill | Both | Appends one JSONL line to the shared, append-only decision log — written unconditionally regardless of a story's `context_mode`. Runs inline: invoked more often than anything else here (3+ times per story plus every amendment), and its job is capturing reasoning that just happened in the calling session, which isolation would only make worse. Log growth is kept in check separately, by `scripts/rotate-decision-log.ps1` |
+| `context-compressor` | Skill | Story | Compresses accumulated context to control token usage on long-running stories. Must run inline — it has to see the live session context to compress it, so it can't be an agent either. Haiku 4.5 as a best-effort preference |
 
 Not included in this core: `zoom-out` and `caveman`-style personal tools belong at the user level (`~/.claude/skills/`), not versioned into a project.
 
@@ -60,32 +62,36 @@ Not included in this core: `zoom-out` and `caveman`-style personal tools belong 
 From the root of the target project:
 
 ```powershell
-.\install.ps1 -RepoUrl "https://github.com/<org>/agentic-sdlc-core.git" -Ref "v2.0.0"
+.\install.ps1 -RepoUrl "https://github.com/<org>/agentic-sdlc-core.git" -Ref "v5.4.0"
 ```
 
 This installs:
 
 ```
 <project>/.claude/
-├── skills/                       # all 14 skills — always synced to -Ref
+├── skills/                       # 10 skills — always synced to -Ref
+├── agents/                       # 4 subagents — always synced to -Ref
 ├── schemas/                      # task-graph, story-backlog, decision-log schemas
+├── scripts/                      # rotate-decision-log.ps1 — always synced to -Ref
 ├── agentic-sdlc-core.version     # records repo/ref/commit installed
 ├── CLAUDE.md                     # this project's architecture/conventions (scaffolded once)
 ├── config/
 │   └── orchestration.yaml        # this project's settings (scaffolded once)
 └── state/
-    ├── decision-log.md           # append-only, committed
+    ├── README.md                 # what's in state/ and how rotation works (scaffolded once)
+    ├── decision-log.jsonl        # append-only JSONL, committed
+    ├── decision-log-archive/     # rotated-out entries, one file per rotation run
     └── stories/                  # one folder per story once work starts
 ```
 
-`skills/` and `schemas/` are always overwritten with whatever `-Ref` points to — they're core, and a re-run is how a project takes an update. `CLAUDE.md`, `config/orchestration.yaml`, and `state/` are only created if missing, so re-running the script to pick up a newer core version never clobbers project-specific config or the decision log. Pass `-Force` if you deliberately want those reset from the template too.
+`skills/`, `agents/`, `schemas/`, and `scripts/` are always overwritten with whatever `-Ref` points to — they're core, and a re-run is how a project takes an update. `CLAUDE.md`, `config/orchestration.yaml`, and `state/` are only created if missing, so re-running the script to pick up a newer core version never clobbers project-specific config or the decision log. Pass `-Force` if you deliberately want those reset from the template too.
 
 ### Configure
 
 Fill in `.claude/config/orchestration.yaml`:
 
 ```yaml
-agentic_sdlc_core_version: "2.0.0"
+agentic_sdlc_core_version: "5.4.0"
 context_mode_default: decision-log-only
 risk_thresholds:
   l1_max_files: 1
@@ -96,9 +102,9 @@ ticket_system:
 state_dir: .claude/state
 ```
 
-Fill in `.claude/CLAUDE.md` with this project's architecture, conventions, and domain glossary — this is prose the skills read, not settings they branch on, so keep structured decisions in `orchestration.yaml` instead.
+Fill in `.claude/CLAUDE.md` with this project's architecture, conventions, and domain glossary — this is prose the skills and agents read, not settings they branch on, so keep structured decisions in `orchestration.yaml` instead.
 
-**Commit `.claude/state/` as work progresses**, not just at the end. A different engineer's story run depends on being able to read the decision log and sibling stories' state — if it only ever existed in someone's local chat session, the cross-story consistency this system is built around silently stops working.
+**Commit `.claude/state/` as part of each story's normal work**, on that story's own branch, merged via its own PR — no separate fast path, same review process as the code changes it sits alongside. That means state becomes visible to other stories exactly when the PR merges, not before. This mostly doesn't matter: two *sequential* stories are fine, since by the time the second starts the first has already merged. Two *concurrent* stories (both open at once, neither merged) genuinely won't see each other's decisions until one lands — but that's an acceptable, bounded cost, not something to engineer around. `depends_on` is reserved for genuine contract dependencies only (this story consumes an API another story builds) — it's not used for "might benefit from awareness," because sequencing stories on that basis at scoping time, before any story-specific work has happened, degrades parallel development badly across a real backlog. The awareness case is handled differently: see Context escalation below.
 
 ---
 
@@ -109,12 +115,16 @@ Fill in `.claude/CLAUDE.md` with this project's architecture, conventions, and d
 Run `project-scoper` with a PRD, an existing repo, or both. It:
 
 1. Runs `repo-discovery` (broad pass, brownfield only) and reads any provided PRD.
-2. Runs a scope-defining `grill-me` session — what's in scope, what's explicitly out, constraints, priorities. **Stops for your approval.**
-3. Writes a program-level spec via `spec-writer`. **Stops for your approval.**
-4. Records scope decisions via `decision-recorder`.
-5. Runs `story-converter` in **spec mode**, producing a backlog: each story gets acceptance criteria and a `context_mode` (see below). **Stops for your approval.**
+2. Runs a `grill-me` session — scope-defining by default (what's in scope, what's explicitly out, constraints, priorities), or a deeper architecture-mode session if you asked for one (see below). **Stops for your approval.**
+3. Writes a program-level spec via `spec-writer` — high-level on API/database detail by default, or fully specified if architecture mode produced that detail. **Stops for your approval.**
+4. Invokes `decision-recorder` to record scope decisions.
+5. Delegates to the `story-converter` agent in **spec mode**, producing a backlog: each story gets acceptance criteria and a `context_mode` (see below). **Stops for your approval.**
 
 Each approved story is then handed off as an independent `feature-orchestrator` run — to you, or to a different engineer.
+
+**Architecture mode** is off by default, and only turns on when you explicitly ask for it at invocation — `project-scoper` doesn't infer it from the PRD or from what `repo-discovery` finds. On, it changes steps 2 and 3 above: `grill-me` goes deep on service boundaries, data ownership, and integration patterns instead of staying scope-level, and `spec-writer` writes that detail into the program spec now instead of deferring it per-story. Worth it for genuinely greenfield or multi-service work, where a story-by-story approach to those decisions risks one story's implementation conflicting with a boundary an earlier story assumed. Not worth it for a bounded feature on a well-understood system — the default light-touch scoping already covers that well.
+
+Neither `grill-me` nor `spec-writer` changed to support this — the constraint that normally keeps them at scope level lives entirely in how `project-scoper` instructs them each run, not in either skill's own file, so architecture mode is really just `project-scoper` telling them something different, not new capability elsewhere. Whether it was on for a project persists on the backlog itself (`architecture_mode` in `story-backlog.schema.json`), and `story-converter` weighs it toward more stories defaulting to `full-spec` context_mode.
 
 ### Working a story
 
@@ -123,26 +133,32 @@ Each approved story is then handed off as an independent `feature-orchestrator` 
 ```mermaid
 flowchart TD
     Start["Step 0: load context per this story's context_mode"] --> RD[repo-discovery]
-    RD --> RC[risk-classifier]
+    RD --> RC["risk-classifier agent<br/>(Haiku 4.5)"]
     RC -->|L1| BF["build-feature (fast path)"]
     RC -->|L2 / L3| GM[grill-me]
     GM --> SW[spec-writer]
     SW --> APV1{"Approve spec?"}
-    APV1 --> DR1[decision-recorder]
+    APV1 --> DR1["decision-recorder"]
     DR1 --> IP[implementation-planner]
     IP --> APV2{"Approve plan?"}
-    APV2 --> DR2[decision-recorder]
-    DR2 --> EXEC["Execute task graph —<br/>sequential + parallel per parallel_group"]
-    EXEC --> VAL[validator]
-    VAL -->|issues found| BFX[bug-fixer] --> VAL
-    VAL -->|passes| DR3[decision-recorder]
-    DR3 --> SC["story-converter (plan mode):<br/>mark the story's ticket complete"]
+    APV2 --> DR2["decision-recorder"]
+    DR2 --> EXEC["Execute task graph —<br/>implementer agent, Sonnet 5 high effort<br/>concurrent per parallel_group"]
+    EXEC --> VAL["validator agent<br/>(Sonnet 5, effort = risk tier)"]
+    VAL -->|blocking findings| BFX["bug-fixer<br/>(given validator's findings)"] --> VAL
+    VAL -->|passes, non-blocking findings noted| DR3["decision-recorder"]
+    DR3 --> SC["story-converter agent, plan mode:<br/>mark the story's ticket complete"]
     SC --> SUM[Delivery summary]
 ```
 
-**Risk-driven branching.** `risk-classifier` isn't advisory — L1 work (isolated fixes, config, styling) actually routes to `build-feature`, a single scope-confirmation and a direct implement → validate, skipping the full ceremony. L2/L3 work goes through the complete chain.
+**Risk-driven branching.** The `risk-classifier` agent isn't advisory — L1 work (isolated fixes, config, styling) actually routes to `build-feature`, a single scope-confirmation and a direct implement → validate, skipping the full ceremony. L2/L3 work goes through the complete chain.
 
-**One ticket per story, created once.** `story-converter` only ever creates a ticket in spec mode, at `project-scoper` time — there's no per-task ticket layer, and no routine ticket step inside `feature-orchestrator`. Plan mode exists solely to update that one ticket, and only fires from three places: a scope amendment, a story amendment, or the completion sync above. The task graph that drives execution stays internal to `plan.json` — it's not mirrored into the tracker.
+**`validator` is an agent on purpose.** It's given the diff, the approved spec, the approved plan, and acceptance criteria as explicit input — it has no access to this session's history at all, by construction, not just by instruction. A reviewer with no memory of how the code got built catches more than one reviewing its own work, the same reason human teams avoid self-review. `bug-fixer` gets the opposite treatment: it's handed `validator`'s structured findings (failed checks, recommended fixes) directly, so it's acting on a diagnosis rather than rediscovering the problem.
+
+**`validator` reviews the diff, not just the checklist.** Beyond acceptance criteria and conventions, it explicitly checks the actual code for security (injection, auth, secrets, unsafe deserialization), performance (N+1s, unnecessary allocations, blocking calls), and code quality (naming, duplication, complexity). Findings are tagged blocking or non-blocking — only blocking ones trigger `bug-fixer`; non-blocking ones ride along into the delivery summary rather than forcing an automatic fix cycle over something like a naming nit.
+
+**Review depth scales with risk, not a flat setting.** `feature-orchestrator` passes an explicit effort level on every call — low for L1 (via `build-feature`), medium for L2, high for L3 — based on the risk tier `risk-classifier` already determined at step 2. `validator` has no session history, so it can't infer this itself; it always comes from the caller. This is the same lesson `risk-classifier` taught earlier in this system's history: computing a risk tier and then applying the same fixed rigor regardless of it wastes the classification.
+
+**One ticket per story, created once.** The `story-converter` agent only ever creates a ticket in spec mode, at `project-scoper` time — there's no per-task ticket layer, and no routine ticket step inside `feature-orchestrator`. Plan mode exists solely to update that one ticket, and only fires from three places: a scope amendment, a story amendment, or the completion sync above. The task graph that drives execution stays internal to `plan.json` — it's not mirrored into the tracker.
 
 **The task graph drives execution, not a linear list.** `implementation-planner`'s output is a graph, not an ordered checklist:
 
@@ -154,11 +170,13 @@ flowchart TD
     T3 --> T4
 ```
 
-A task starts only once everything in its `depends_on` list has passed validation. Tasks sharing a `parallel_group` run as separate concurrent `implementer` sessions — safe only because the planner enforces that tasks sharing a group have fully disjoint `files_touched`. `implementer` itself is scoped to exactly one task id and its declared files; it's not authorized to touch anything else.
+A task starts only once everything in its `depends_on` list has passed validation. Tasks sharing a `parallel_group` run as separate concurrent implementer agent calls, explicitly on Sonnet 5 at high effort — safe only because the planner enforces that tasks sharing a group have fully disjoint `files_touched`, and genuinely concurrent rather than sequential turns labeled parallel because each is its own isolated call. Tasks with `parallel_group: null` run the same way, just one at a time instead of concurrently — isolation and model tier are constant regardless of whether a task has company. `implementer` itself is scoped to exactly one task id and its declared files; it's not authorized to touch anything else.
+
+Earlier versions of this system made isolation conditional on `parallel_group`, letting solo tasks run inline to skip the cost of re-establishing context. That traded a real, immediate cost — solo tasks silently inheriting whatever model the orchestrator's session happened to be on, and a weaker `files_touched` boundary since everything in a shared session stays technically reachable — for a theoretical savings that was never actually measured. Reverted to always-isolated until real cost telemetry justifies bringing the conditional path back.
 
 ### `context_mode`: three settings, one guarantee
 
-Assigned per story by `story-converter` when the backlog is created:
+Assigned per story by the `story-converter` agent when the backlog is created — a reasonable starting guess made before any story-specific work has happened, not a permanent commitment. If it turns out to be wrong, context escalation (below) corrects it mid-run, without blocking anything:
 
 | Mode | What a story's `feature-orchestrator` run loads at step 0 |
 |---|---|
@@ -168,7 +186,7 @@ Assigned per story by `story-converter` when the backlog is created:
 
 The guarantee that holds regardless of mode: **every story writes to the decision log unconditionally.** `context_mode` controls what a story reads on the way in, never what it contributes on the way out — so choosing `independent` for a self-contained story never creates a blind spot for whoever reads the log later.
 
-### When things change mid-story: two amendment loops
+### When things change mid-story: two amendment loops, and a context escalation
 
 **Scope amendment loop** — `implementer` needs a file outside its declared `files_touched`:
 
@@ -176,8 +194,8 @@ The guarantee that holds regardless of mode: **every story writes to the decisio
 2. Re-invoke `implementation-planner` scoped to just that gap.
 3. Re-check the parallel-safety rule — a new file might now collide with a sibling task in the same `parallel_group`; resequence if so.
 4. One-line approval, not a full plan re-approval.
-5. Note the amended scope on the story's ticket via `story-converter` — a short delta, not a restatement.
-6. Resume `implementer` with the amended scope.
+5. Delegate to the `story-converter` agent to note the amended scope on the story's ticket — a short delta, not a restatement.
+6. Delegate to the `implementer` agent again on the task with its amended `files_touched`. This is a fresh call reading the task's current on-disk state, not a literal resume of a paused process — whatever was already built is sitting in the files themselves, so nothing needs to carry over in memory.
 
 **Story amendment loop** — acceptance criteria change after the spec was approved:
 
@@ -185,15 +203,46 @@ The guarantee that holds regardless of mode: **every story writes to the decisio
 2. Re-invoke `spec-writer` to amend the spec.
 3. If a plan exists, re-invoke `implementation-planner` to patch it (same parallel-safety re-check).
 4. Flag explicitly if already-implemented work now conflicts — never silently rework it.
-5. `decision-recorder` writes unconditionally, regardless of `context_mode`.
-6. Reflect the new criteria on the story's ticket via `story-converter` — what changed and why.
+5. Invoke `decision-recorder` unconditionally, regardless of `context_mode`.
+6. Delegate to the `story-converter` agent to reflect the new criteria on the story's ticket — what changed and why.
 7. One-line approval for the delta.
 
-Both loops patch forward rather than restarting the story.
+**Context escalation** — a story's assigned `context_mode` (`independent` or `decision-log-only`) turns out not to be enough, usually surfacing during `grill-me` or `spec-writer`:
+
+1. Escalate upward only — `independent`/`decision-log-only` → `full-spec` — and never back down once escalated.
+2. Load the program spec via the backlog's `program_spec_ref`. No branch-visibility problem here, unlike `.claude/state/` generally: `project-scoper` writes this before any story branches even exist, so it's already on `main`.
+3. No approval gate — this changes what informs a decision, not what gets built, unlike the two loops above.
+4. `decision-recorder` logs it, including *why*. That's the useful signal: if `decision-log-only` stories keep escalating, `story-converter`'s initial tiering isn't earning its keep.
+
+`context_mode` is a reasonable starting guess made before any story-specific work has happened, not a commitment — this is what corrects a wrong guess without ever blocking the story on it.
+
+Both amendment loops patch forward rather than restarting the story; the escalation doesn't restart anything either — it just widens what the rest of the run can see.
 
 ### Updating a project's core version
 
-Re-run `install.ps1` with a new `-Ref`. Skills and schemas sync to the new version; your project's config and decision log are untouched.
+Re-run `install.ps1` with a new `-Ref`. Skills, agents, schemas, and scripts sync to the new version; your project's config and decision log are untouched.
+
+### Keeping the decision log from growing unbounded
+
+`decision-log.jsonl` only ever grows — every story that loads it via `context_mode` pays for its entire history, not just the part relevant to that story. `scripts/rotate-decision-log.ps1` addresses this, run manually and periodically rather than automatically:
+
+```powershell
+.claude/scripts/rotate-decision-log.ps1
+```
+
+It keeps the most recent entries in the hot log — bounded by both an age cutoff (default 6 months) and a max count (default 200), whichever an entry crosses first — and moves everything else into `state/decision-log-archive/<date>.jsonl`, stripping `reasoning`, `alternatives_considered`, and `tradeoffs` on the way out. `id`, `date`, `story_id`, `decision`, and `consequences` survive rotation; those five fields are what a story reading the log later actually needs, not the deliberation that produced them. A rotation breadcrumb gets appended to the hot log noting what moved and where, continuing the same `DEC-####` id sequence rather than resetting it.
+
+Archives aren't loaded by any `context_mode` automatically — they're a manual lookup for the rare case something needs older history, the same "narrow by default, widen only with reason" shape as `context_mode` itself. Run with `-DryRun` first to see what a rotation would do before it writes anything.
+
+### Getting ADRs out of the decision log
+
+Nothing new to write — the decision log already captures decisions in the same shape an ADR needs (`context`/`decision`/`reasoning`/`alternatives_considered`/`consequences`/`tradeoffs`). What was missing was marking which entries are ADR-worthy and rendering them into the per-file format most ADR tooling expects. `decision-recorder` now accepts a `significance` tag (`architectural` or `routine`, defaulting to `routine`) from whichever skill invokes it — the caller has the context to judge this, `decision-recorder` itself doesn't.
+
+```powershell
+.claude/scripts/export-adrs.ps1
+```
+
+Filters the hot log for `significance: architectural` and writes one Markdown file per entry to `docs/adr/`, named by the entry's own `DEC-####` id so it always traces back to the exact log line. This is a projection, not a second source of truth — re-running it regenerates all ADR files from current log content, and a correction belongs as a new log entry, not a hand-edit of a generated file. Pass `-IncludeArchive` to also render architectural entries that have already been rotated out of the hot log.
 
 ---
 
@@ -205,7 +254,7 @@ A client asks for a **policy comparison feature**: compare 2–3 policies side b
 
 `project-scoper` runs `repo-discovery` over the existing repo and finds the current `PolicyController`. A `grill-me` session settles the boundary: comparison only, no AI-driven recommendation (out of scope). `spec-writer` produces the program spec, and `decision-recorder` logs the decision that matters most for everything downstream: **comparison logic lives in a new `PolicyComparisonService`, not bolted onto the existing controller.**
 
-`story-converter` (spec mode) splits the spec into two stories, creating one ticket for each:
+The `story-converter` agent (spec mode) splits the spec into two stories, creating one ticket for each:
 
 | Story | `context_mode` | Why |
 |---|---|---|
@@ -214,7 +263,7 @@ A client asks for a **policy comparison feature**: compare 2–3 policies side b
 
 ### Story A: comparison API
 
-A different engineer picks this up as an independent `feature-orchestrator` run. `context_mode: full-spec` means step 0 loads the program spec. `risk-classifier` returns L2 (new service, no auth/migrations) — full chain, not the L1 fast path. `implementation-planner` produces:
+A different engineer picks this up as an independent `feature-orchestrator` run. `context_mode: full-spec` means step 0 loads the program spec. The `risk-classifier` agent returns L2 (new service, no auth/migrations) — full chain, not the L1 fast path. `implementation-planner` produces:
 
 ```mermaid
 flowchart TD
@@ -224,21 +273,23 @@ flowchart TD
     T3 --> T4
 ```
 
-`t1` runs alone. `t2` and `t3` then run as separate concurrent `implementer` sessions — safe because they touch disjoint files. `t4` waits for both.
+`t1` runs alone. `t2` and `t3` then run as separate concurrent calls to the implementer agent — safe because they touch disjoint files. `t4` waits for both.
 
-Partway through `t3`, `implementer` discovers it also needs a `PolicyComparisonDto.cs` that wasn't in its declared `files_touched`. **Scope amendment loop:** the gap is reported, `implementation-planner` patches `t3`'s file list, confirms the new file doesn't collide with `t2`'s, gets a one-line approval, `story-converter` notes the amended scope on Story A's ticket, and `t3` resumes.
+Partway through `t3`, the implementer agent discovers it also needs a `PolicyComparisonDto.cs` that wasn't in its declared `files_touched`. **Scope amendment loop:** the gap is reported, `implementation-planner` patches `t3`'s file list, confirms the new file doesn't collide with `t2`'s, gets a one-line approval, the `story-converter` agent notes the amended scope on Story A's ticket, and `t3` continues with a fresh call against the amended `files_touched`.
 
 ### Story B: comparison UI
 
 Runs in parallel, by a different engineer. `context_mode: decision-log-only` means step 0 loads just the shared log — enough to know comparison logic lives in `PolicyComparisonService`, without the full program spec.
 
-Partway through, the client adds a requirement: highlight coverage differences in green/red, not just price. **Story amendment loop:** `spec-writer` amends Story B's spec, `implementation-planner` adds a task for the new UI logic, `decision-recorder` logs it — *unconditionally*, even though this story is `decision-log-only` — `story-converter` reflects the new criteria on Story B's ticket, and a lightweight approval lets `implementer` resume.
+During `grill-me`, the engineer hits a question the decision log doesn't answer: should the comparison UI show currency conversion, or assume a single currency throughout? That's a program-scoping question, not something Story A's decisions happened to cover. **Context escalation:** `context_mode` escalates to `full-spec`, the program spec confirms single-currency was the assumption all along, `decision-recorder` logs the escalation and why, and `grill-me` continues with the answer in hand — no approval needed, since nothing about what gets built changed, only what informed the answer.
 
-That log write is the part worth noticing: Story B never loaded the full program spec, but the criteria change still lands in the shared log. If a third story touching this feature were added later, it would see that decision on the way in, regardless of its own `context_mode`.
+Partway through implementation, the client adds a requirement: highlight coverage differences in green/red, not just price. **Story amendment loop:** `spec-writer` amends Story B's spec, `implementation-planner` adds a task for the new UI logic, `decision-recorder` logs it — *unconditionally*, even though this story is now `full-spec` — the `story-converter` agent reflects the new criteria on Story B's ticket, and a lightweight approval lets the implementer agent continue.
+
+Two log writes worth noticing for different reasons: the escalation shows `context_mode` correcting a guess that turned out too narrow, made before either story's actual work had started. The story-amendment write makes the same point the Scope amendment loop made for Story A — the log capturing a decision regardless of what got the story there, so a third story added later would see it on the way in either way.
 
 ### Delivery
 
-Both stories finish; `validator` passes each, and `story-converter` marks each story's one ticket complete. What actually happened underneath: one program-level scoping pass, two engineers working genuinely in parallel on disjoint files with no coordination meeting, one mid-flight requirement change handled without derailing the other story, and a decision log that ended up doing the real work of keeping two people — who never talked to each other about this feature — consistent with each other.
+Both stories finish; the `validator` agent passes each — Story A at medium effort, matching the L2 tier established earlier — and the `story-converter` agent marks each story's one ticket complete. What actually happened underneath: one program-level scoping pass, two engineers working genuinely in parallel on disjoint files with no coordination meeting, one mid-flight requirement change handled without derailing the other story, and a decision log that ended up doing the real work of keeping two people — who never talked to each other about this feature — consistent with each other.
 
 ---
 
@@ -246,4 +297,6 @@ Both stories finish; `validator` passes each, and `story-converter` marks each s
 
 - Schemas: `schemas/task-graph.schema.json`, `schemas/story-backlog.schema.json`, `schemas/decision-log.schema.json`
 - Full skill definitions: `skills/<name>/SKILL.md`
+- Full agent definitions: `agents/<name>.md`
+- Maintenance scripts: `scripts/rotate-decision-log.ps1`, `scripts/export-adrs.ps1`
 - What changed between core versions: `CHANGELOG.md`

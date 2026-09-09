@@ -3,7 +3,7 @@
 # hardcode any of these values directly — that's what caused the original
 # build-feature bug this project was generalized away from.
 
-agentic_sdlc_core_version: "2.0.0"   # keep in sync with the -Ref passed to install.ps1
+agentic_sdlc_core_version: "5.4.0"   # keep in sync with the -Ref passed to install.ps1
 
 # Default context_mode assigned to a story when story-converter (spec mode)
 # has no clear reason to override it. Can still be overridden per story.
@@ -22,3 +22,11 @@ ticket_system:
   # board_id / org_url / etc. as needed by your Jira or ADO integration
 
 state_dir: .claude/state
+
+# Thresholds for scripts/rotate-decision-log.ps1 — not read automatically by any
+# skill or agent, since that script doesn't parse this file. Keep these two values
+# in sync with the -MaxAgeMonths/-MaxEntries you actually pass when running it;
+# they're documentation of your team's policy, not enforced from here.
+decision_log_rotation:
+  max_age_months: 6
+  max_entries: 200

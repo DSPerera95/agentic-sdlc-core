@@ -7,12 +7,14 @@
     Clones agentic-sdlc-core at the given ref into a temp folder, then:
 
       - Copies skills/*      -> .claude/skills/     (always overwritten)
+      - Copies agents/*      -> .claude/agents/      (always overwritten)
       - Copies schemas/*     -> .claude/schemas/     (always overwritten)
+      - Copies scripts/*     -> .claude/scripts/      (always overwritten)
       - Writes .claude/agentic-sdlc-core.version with the installed repo/ref/commit
       - Copies project-template/.claude/* -> .claude/  (only files that don't already exist,
         unless -Force is passed)
 
-    Skills and schemas are treated as "core" and always synced to the pinned ref.
+    Skills, agents, schemas, and scripts are treated as "core" and always synced to the pinned ref.
     CLAUDE.md, config/orchestration.yaml, and state/ are project-specific and are
     never overwritten by default, so re-running this script to pick up a newer
     core version is safe.
@@ -82,13 +84,17 @@ if ($LASTEXITCODE -ne 0) {
 $commitSha = (git -C $tempDir rev-parse HEAD).Trim()
 Write-Ok "Fetched commit $($commitSha.Substring(0, 8))"
 
-# --- Install skills and schemas (always synced to the pinned version) ------
+# --- Install skills, agents, and schemas (always synced to the pinned version)
 
 $claudeDir   = ".claude"
 $skillsSrc   = Join-Path $tempDir "skills"
+$agentsSrc   = Join-Path $tempDir "agents"
 $schemasSrc  = Join-Path $tempDir "schemas"
+$scriptsSrc  = Join-Path $tempDir "scripts"
 $skillsDest  = Join-Path $claudeDir "skills"
+$agentsDest  = Join-Path $claudeDir "agents"
 $schemasDest = Join-Path $claudeDir "schemas"
+$scriptsDest = Join-Path $claudeDir "scripts"
 
 if (Test-Path $skillsSrc) {
     Write-Step "Installing skills -> $skillsDest"
@@ -100,6 +106,16 @@ if (Test-Path $skillsSrc) {
     Write-Warn "No skills/ folder found in the source repo at ref '$Ref' — skipped."
 }
 
+if (Test-Path $agentsSrc) {
+    Write-Step "Installing agents -> $agentsDest"
+    New-Item -ItemType Directory -Force -Path $agentsDest | Out-Null
+    Copy-Item -Path "$agentsSrc\*" -Destination $agentsDest -Recurse -Force
+    $agentCount = (Get-ChildItem $agentsDest -File -Filter "*.md").Count
+    Write-Ok "$agentCount agents installed"
+} else {
+    Write-Warn "No agents/ folder found in the source repo at ref '$Ref' — skipped."
+}
+
 if (Test-Path $schemasSrc) {
     Write-Step "Installing schemas -> $schemasDest"
     New-Item -ItemType Directory -Force -Path $schemasDest | Out-Null
@@ -107,6 +123,15 @@ if (Test-Path $schemasSrc) {
     Write-Ok "Schemas installed"
 } else {
     Write-Warn "No schemas/ folder found in the source repo at ref '$Ref' — skipped."
+}
+
+if (Test-Path $scriptsSrc) {
+    Write-Step "Installing scripts -> $scriptsDest"
+    New-Item -ItemType Directory -Force -Path $scriptsDest | Out-Null
+    Copy-Item -Path "$scriptsSrc\*" -Destination $scriptsDest -Recurse -Force
+    Write-Ok "Scripts installed"
+} else {
+    Write-Warn "No scripts/ folder found in the source repo at ref '$Ref' — skipped."
 }
 
 # Record what's installed, so a re-run (or a teammate) can see the pinned version
@@ -144,7 +169,9 @@ function Install-TemplateFile([string]$RelativePath) {
 if (Test-Path $templateRoot) {
     Install-TemplateFile "CLAUDE.md"
     Install-TemplateFile "config\orchestration.yaml"
-    Install-TemplateFile "state\decision-log.md"
+    Install-TemplateFile "state\README.md"
+    Install-TemplateFile "state\decision-log.jsonl"
+    Install-TemplateFile "state\decision-log-archive\.gitkeep"
     Install-TemplateFile "state\stories\README.md"
 } else {
     Write-Warn "No project-template/ folder found in the source repo at ref '$Ref' — skipped."
@@ -155,6 +182,6 @@ if (Test-Path $templateRoot) {
 Remove-Item -Recurse -Force $tempDir
 
 Write-Step "Done"
-Write-Info "Skills and schemas are synced to $Ref (commit $($commitSha.Substring(0, 8)))."
+Write-Info "Skills, agents, schemas, and scripts are synced to $Ref (commit $($commitSha.Substring(0, 8)))."
 Write-Info "Fill in $claudeDir\config\orchestration.yaml with this project's ticket system and context_mode default."
 Write-Info "Commit the changes under $claudeDir to this repo's version control."
