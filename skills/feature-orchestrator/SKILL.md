@@ -5,8 +5,6 @@ description: >
 user-invocable: true
 ---
 
-Always invoke /caveman first at the beginning of a new conversation. Stay active entire session unless user says stop.
-
 ## Agents vs skills
 
 The risk-classifier, story-converter, validator, and implementer agents (`.claude/agents/`) are fixed-identity workers: they always run isolated, in a fresh context, on a pinned model, and return a single result. Delegate to them by name, give them everything they need explicitly (they have no access to this session's history), and treat their return value as final for that call.
@@ -18,6 +16,7 @@ The risk-classifier, story-converter, validator, and implementer agents (`.claud
 ## Model tiers
 
 Unless a step below says otherwise:
+
 - risk-classifier, story-converter agents: Claude Haiku 4.5 — classification and ticket formatting don't need a heavier model.
 - implementer agent: always Claude Sonnet 5 at high effort, for every task regardless of `parallel_group`.
 - validator agent: always Claude Sonnet 5. Effort scales with this story's risk tier from step 2, passed explicitly on every call since validator has no session history to determine it itself: low for L1 (via /build-feature), medium for L2, high for L3.
@@ -90,6 +89,7 @@ Triggered when this story's assigned `context_mode` (`independent` or `decision-
 4. Produce fix summary
 
 ## Stop immediately and request clarification when:
+
 - requirements conflict
 - architecture is unclear
 - security implications exist
@@ -98,6 +98,7 @@ Triggered when this story's assigned `context_mode` (`independent` or `decision-
 - confidence is low
 
 ## Never:
+
 - perform unrelated refactors
 - rewrite architecture without approval
 - modify unrelated files
