@@ -1,5 +1,17 @@
 # Changelog
 
+## 7.3.0 — install.ps1 additively merges orchestration.yaml
+
+**Added**
+- `install.ps1` now compares an already-installed project's `config/orchestration.yaml` against the version being installed and appends any top-level properties present in the new version but missing from the project's file - each with its original comment intact, and every existing property left completely untouched, even if its value differs from the new template's default. Previously, once a project had its own `orchestration.yaml`, it was skipped entirely on every future install - meaning new fields (`stories_dir` in 7.2.0, `risk_thresholds` before it) would never reach an existing installation without a manual copy-paste.
+- Deliberately line-based rather than a real YAML parse-and-reserialize: round-tripping through a generic YAML parser would strip the inline comments that make this file usable. Only whole top-level properties are detected as missing - a future property nested inside an existing one (e.g. a new field added under `risk_thresholds` itself) won't be caught by this and would need the same treatment revisited.
+- `-Force` does not affect this file. A full overwrite would defeat the purpose - it stays additive-only regardless.
+
+**Fixed**
+- Found and fixed while testing this against a real merge: PowerShell 5.1's `Get-Content -Encoding UTF8` doesn't reliably honor that flag for a BOM-less UTF8 file - the same class of encoding gotcha this repo's own `CLAUDE.md` already documents, just hitting a different cmdlet than the ones already fixed for it. Switched to `[System.IO.File]::ReadAllLines`/`WriteAllLines` with an explicit encoding object instead, which doesn't have this quirk. Caught by literally testing against a real customized config containing an em-dash, not assumed safe.
+
+**Why**: this repo's own `orchestration.yaml` picked up two new top-level properties in the last two versions alone (`risk_thresholds`, `stories_dir`) - "never overwrite an existing project's config" was the right instinct for protecting customization, but it had the side effect of also silently freezing a project out of every future config addition. An additive-only merge gets both: existing values stay exactly as a project set them, and new capability still reaches an existing install without a manual step.
+
 ## 7.2.0 — context_mode_default wired up; stories_dir made configurable
 
 **Added**

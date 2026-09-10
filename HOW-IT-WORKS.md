@@ -86,7 +86,7 @@ This installs:
                                    # path comes from stories_dir in orchestration.yaml
 ```
 
-`skills/`, `agents/`, `schemas/`, and `scripts/` are always overwritten with whatever `-Ref` points to — they're core, and a re-run is how a project takes an update. `CLAUDE.md`, `config/orchestration.yaml`, and `state/` are only created if missing, so re-running the script to pick up a newer core version never clobbers project-specific config or the decision log. Pass `-Force` if you deliberately want those reset from the template too.
+`skills/`, `agents/`, `schemas/`, and `scripts/` are always overwritten with whatever `-Ref` points to — they're core, and a re-run is how a project takes an update. `CLAUDE.md` and `state/` are only created if missing, so re-running the script to pick up a newer core version never clobbers those. Pass `-Force` if you deliberately want those reset from the template too. `config/orchestration.yaml` is different: if it already exists, it's never overwritten (not even with `-Force`) but any top-level property present in the new version and missing from yours gets appended, comments included — existing values are never touched.
 
 ### Configure
 
@@ -225,7 +225,7 @@ Both amendment loops patch forward rather than restarting the story; the escalat
 
 ### Updating a project's core version
 
-Re-run `install.ps1` with a new `-Ref`. Skills, agents, schemas, and scripts sync to the new version; your project's config and decision log are untouched.
+Re-run `install.ps1` with a new `-Ref`. Skills, agents, schemas, and scripts sync to the new version; your decision log is untouched. `orchestration.yaml` picks up any new top-level properties the new version added, with your existing values left exactly as they were - so a config addition like `stories_dir` (7.2.0) or `risk_thresholds` (7.1.0) actually reaches projects that installed before those existed, not just fresh installs.
 
 ### Keeping the decision log from growing unbounded
 
