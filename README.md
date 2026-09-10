@@ -12,9 +12,10 @@ A reusable multi-agent orchestration layer for AI-assisted software development,
   - `story-backlog.schema.json` — output of the `story-converter` agent (spec mode)
   - `task-graph.schema.json` — output of `implementation-planner`
   - `decision-log.schema.json` — one line of `decision-log.jsonl` per entry, written by `decision-recorder`
-- **`scripts/`** — two maintenance scripts, run manually and periodically, neither run automatically by anything else in this system:
+- **`scripts/`** — three maintenance scripts, run manually and on demand, none run automatically by anything else in this system:
   - `rotate-decision-log.ps1` — keeps `decision-log.jsonl` from growing unbounded over a project's lifetime; archives older entries with `reasoning`/`alternatives_considered`/`tradeoffs` stripped, keeps `id`/`date`/`story_id`/`decision`/`consequences`.
   - `export-adrs.ps1` — renders `significance: architectural` log entries as individual ADR files in `docs/adr/`. A projection of the log, never a second source of truth.
+  - `token-usage-report.ps1` — reads the Claude Code session transcript and renders a terminal bar chart of token usage per agent (exact) and per skill (best-effort heuristic). Works against a still-running session, not just a finished one. `-Html` writes a presentable, colored version to `.claude/analytics/` for sharing with a non-technical audience.
 - **`project-template/`** — the `.claude/` skeleton to copy into a new project that will use this core.
 
 ## How the pieces fit together

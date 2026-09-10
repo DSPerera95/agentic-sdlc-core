@@ -72,7 +72,7 @@ This installs:
 ├── skills/                       # 10 skills — always synced to -Ref
 ├── agents/                       # 4 subagents — always synced to -Ref
 ├── schemas/                      # task-graph, story-backlog, decision-log schemas
-├── scripts/                      # rotate-decision-log.ps1 — always synced to -Ref
+├── scripts/                      # rotate-decision-log.ps1, export-adrs.ps1, token-usage-report.ps1 — always synced to -Ref
 ├── agentic-sdlc-core.version     # records repo/ref/commit installed
 ├── CLAUDE.md                     # this project's architecture/conventions (scaffolded once)
 ├── config/
@@ -244,6 +244,24 @@ Nothing new to write — the decision log already captures decisions in the same
 
 Filters the hot log for `significance: architectural` and writes one Markdown file per entry to `docs/adr/`, named by the entry's own `DEC-####` id so it always traces back to the exact log line. This is a projection, not a second source of truth — re-running it regenerates all ADR files from current log content, and a correction belongs as a new log entry, not a hand-edit of a generated file. Pass `-IncludeArchive` to also render architectural entries that have already been rotated out of the hot log.
 
+### Checking token usage per skill/agent
+
+```powershell
+.claude/scripts/token-usage-report.ps1
+```
+
+Reads the Claude Code session transcript for the current project and renders a terminal bar chart of token usage, one row per agent and per skill. The transcript is written incrementally while a session is open, so this can be run from a second terminal against a session that's still running — not just a finished one — and pointed at an older one with `-SessionId`, or listed with `-List`.
+
+Agent totals are exact: each isolated agent invocation completes with a single pre-aggregated token figure the harness already computes, tied back to the invoking `subagent_type`. Skill totals are a best-effort heuristic, labelled as such in the output — skills run inline with no isolation boundary, so a skill invocation only marks where attribution starts, not where it ends. Usage that isn't inside any skill span prints as `orchestrator (unattributed)` rather than being dropped, so the totals always reconcile with the session's real usage. No new state is written by default — like `export-adrs.ps1`, this is a disposable projection of data that already exists; the transcript stays the only source of truth.
+
+Add `-Html` for a presentable version of the same data — colored stacked bar charts (Input Tokens / Output Tokens / Cache Read Input Tokens / Cache Creation Input Tokens as a legend-backed series, colors validated for colorblind-safety and contrast via the `dataviz` skill), light/dark themes, hover tooltips, and a table view:
+
+```powershell
+.claude/scripts/token-usage-report.ps1 -Html
+```
+
+Writes to `.claude/analytics/token-usage-report-<session-id>-<timestamp>.html` by default (created if missing), or wherever `-HtmlPath` points. Unlike the rest of `.claude/state/`, these files are timestamped and disposable — regenerate anytime from the transcript. `install.ps1` adds `.claude/analytics/` to the project's `.gitignore` automatically, but only if that project already has one — it won't create a `.gitignore` a project never chose to have. If you installed before this existed, or your project has no `.gitignore`, add the line yourself.
+
 ---
 
 ## 5. Practical example
@@ -298,5 +316,5 @@ Both stories finish; the `validator` agent passes each — Story A at medium eff
 - Schemas: `schemas/task-graph.schema.json`, `schemas/story-backlog.schema.json`, `schemas/decision-log.schema.json`
 - Full skill definitions: `skills/<name>/SKILL.md`
 - Full agent definitions: `agents/<name>.md`
-- Maintenance scripts: `scripts/rotate-decision-log.ps1`, `scripts/export-adrs.ps1`
+- Maintenance scripts: `scripts/rotate-decision-log.ps1`, `scripts/export-adrs.ps1`, `scripts/token-usage-report.ps1`
 - What changed between core versions: `CHANGELOG.md`

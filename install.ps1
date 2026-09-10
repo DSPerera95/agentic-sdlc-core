@@ -13,6 +13,8 @@
       - Writes .claude/agentic-sdlc-core.version with the installed repo/ref/commit
       - Copies project-template/.claude/* -> .claude/  (only files that don't already exist,
         unless -Force is passed)
+      - Adds .claude/analytics/ to this repo's .gitignore, only if a .gitignore
+        already exists here and doesn't already cover it - never creates one
 
     Skills, agents, schemas, and scripts are treated as "core" and always synced to the pinned ref.
     CLAUDE.md, config/orchestration.yaml, and state/ are project-specific and are
@@ -175,6 +177,23 @@ if (Test-Path $templateRoot) {
     Install-TemplateFile "state\stories\README.md"
 } else {
     Write-Warn "No project-template/ folder found in the source repo at ref '$Ref' - skipped."
+}
+
+# --- Ignore disposable analytics output, only if this repo already uses a .gitignore
+
+$gitignorePath = ".gitignore"
+if (Test-Path $gitignorePath) {
+    Write-Step "Updating .gitignore"
+    $gitignoreContent = Get-Content $gitignorePath -Raw -ErrorAction SilentlyContinue
+    if ($gitignoreContent -and $gitignoreContent.Contains(".claude/analytics")) {
+        Write-Info ".gitignore already covers .claude/analytics/ - left as-is."
+    } else {
+        $entry = "`n# agentic-sdlc-core: token-usage-report.ps1 -Html output - disposable, regenerate anytime`n.claude/analytics/"
+        Add-Content -Path $gitignorePath -Value $entry
+        Write-Ok "Added .claude/analytics/ to .gitignore"
+    }
+} else {
+    Write-Info "No .gitignore in this repo - skipped (not creating one on the project's behalf)."
 }
 
 # --- Cleanup ------------------------------------------------------------------
