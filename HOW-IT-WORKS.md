@@ -41,7 +41,7 @@ Two different primitives, deliberately not interchangeable. **Skills** run inlin
 | `implementation-planner` | Skill | Story | Converts an approved spec into a task graph: `depends_on`, `parallel_group`, `files_touched` per task |
 | `implementer` | **Agent** | Story | Implements exactly one task, scoped strictly to its declared `files_touched`. Always isolated, always Sonnet 5, high effort — no conditional inline path |
 | `validator` | **Agent** | Story | Checks acceptance criteria, conventions, and regressions, and code-reviews the diff for security, performance, and code quality — findings tagged blocking or non-blocking. Sonnet 5; effort scales with risk tier (low/medium/high) |
-| `bug-fixer` | Skill | Story | Diagnoses and fixes a failing check with a minimal, targeted change |
+| `bug-fixer` | **Agent** | Story | Diagnoses and fixes a failing check with a minimal, targeted change. Given validator's structured findings explicitly when one exists. Sonnet 5; effort scales with risk tier (low/medium/high), medium as the bug-fix-only workflow's fixed default |
 | `story-converter` | **Agent** | Both | The only place tickets get created — spec mode, once, by `project-scoper`. Plan mode only ever updates that same ticket, and only when `feature-orchestrator` has a scope amendment, a story amendment, or a completion to report. Haiku 4.5 |
 | `decision-recorder` | Skill | Both | Appends one JSONL line to the shared, append-only decision log — written unconditionally regardless of a story's `context_mode`. Runs inline: invoked more often than anything else here (3+ times per story plus every amendment), and its job is capturing reasoning that just happened in the calling session, which isolation would only make worse. Log growth is kept in check separately, by `scripts/rotate-decision-log.ps1` |
 | `context-compressor` | Skill | Story | Compresses accumulated context to control token usage on long-running stories. Must run inline — it has to see the live session context to compress it, so it can't be an agent either. Haiku 4.5 as a best-effort preference |
@@ -69,8 +69,8 @@ This installs:
 
 ```
 <project>/.claude/
-├── skills/                       # 10 skills — always synced to -Ref
-├── agents/                       # 4 subagents — always synced to -Ref
+├── skills/                       # 9 skills — always synced to -Ref
+├── agents/                       # 5 subagents — always synced to -Ref
 ├── schemas/                      # task-graph, story-backlog, decision-log schemas
 ├── scripts/                      # rotate-decision-log.ps1, export-adrs.ps1, token-usage-report.ps1 — always synced to -Ref
 ├── agentic-sdlc-core.version     # records repo/ref/commit installed
@@ -118,7 +118,7 @@ Run `project-scoper` with a PRD, an existing repo, or both. It:
 2. Runs a `grill-me` session — scope-defining by default (what's in scope, what's explicitly out, constraints, priorities), or a deeper architecture-mode session if you asked for one (see below). **Stops for your approval.**
 3. Writes a program-level spec via `spec-writer` — high-level on API/database detail by default, or fully specified if architecture mode produced that detail. **Stops for your approval.**
 4. Invokes `decision-recorder` to record scope decisions.
-5. Delegates to the `story-converter` agent in **spec mode**, producing a backlog: each story gets acceptance criteria and a `context_mode` (see below). **Stops for your approval.**
+5. Delegates to the `story-converter` agent in **spec mode**, producing a backlog: each story gets acceptance criteria and a `context_mode` (see below), one ticket per story in the configured tracker, and the whole backlog written locally to `.claude/state/story-backlog.json`. **Stops for your approval.**
 
 Each approved story is then handed off as an independent `feature-orchestrator` run — to you, or to a different engineer.
 
@@ -144,7 +144,7 @@ flowchart TD
     APV2 --> DR2["decision-recorder"]
     DR2 --> EXEC["Execute task graph —<br/>implementer agent, Sonnet 5 high effort<br/>concurrent per parallel_group"]
     EXEC --> VAL["validator agent<br/>(Sonnet 5, effort = risk tier)"]
-    VAL -->|blocking findings| BFX["bug-fixer<br/>(given validator's findings)"] --> VAL
+    VAL -->|blocking findings| BFX["bug-fixer agent<br/>(given validator's findings)"] --> VAL
     VAL -->|passes, non-blocking findings noted| DR3["decision-recorder"]
     DR3 --> SC["story-converter agent, plan mode:<br/>mark the story's ticket complete"]
     SC --> SUM[Delivery summary]
@@ -152,7 +152,7 @@ flowchart TD
 
 **Risk-driven branching.** The `risk-classifier` agent isn't advisory — L1 work (isolated fixes, config, styling) actually routes to `build-feature`, a single scope-confirmation and a direct implement → validate, skipping the full ceremony. L2/L3 work goes through the complete chain.
 
-**`validator` is an agent on purpose.** It's given the diff, the approved spec, the approved plan, and acceptance criteria as explicit input — it has no access to this session's history at all, by construction, not just by instruction. A reviewer with no memory of how the code got built catches more than one reviewing its own work, the same reason human teams avoid self-review. `bug-fixer` gets the opposite treatment: it's handed `validator`'s structured findings (failed checks, recommended fixes) directly, so it's acting on a diagnosis rather than rediscovering the problem.
+**`validator` and `bug-fixer` are both agents, for the same reason.** Each is given everything it needs as explicit input — `validator` gets the diff, the approved spec, the approved plan, and acceptance criteria; `bug-fixer` gets `validator`'s structured findings (failed checks, recommended fixes) when a prior review exists, or the bug report itself when it doesn't (the bug-fix-only workflow). Neither has access to this session's history at all, by construction, not just by instruction. A reviewer with no memory of how the code got built catches more than one reviewing its own work, the same reason human teams avoid self-review — and a fixer acting on a diagnosis it was actually handed, rather than one it has to rediscover from a shared conversation, gets the same benefit.
 
 **`validator` reviews the diff, not just the checklist.** Beyond acceptance criteria and conventions, it explicitly checks the actual code for security (injection, auth, secrets, unsafe deserialization), performance (N+1s, unnecessary allocations, blocking calls), and code quality (naming, duplication, complexity). Findings are tagged blocking or non-blocking — only blocking ones trigger `bug-fixer`; non-blocking ones ride along into the delivery summary rather than forcing an automatic fix cycle over something like a naming nit.
 

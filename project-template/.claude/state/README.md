@@ -33,6 +33,20 @@ Thresholds default to 6 months / 200 entries; override with
 `decision_log_rotation` block, or run with `-DryRun` first to see what it
 would do.
 
+## story-backlog.json
+
+Written once per project by `story-converter` in spec mode, matching
+`schemas/story-backlog.schema.json` in agentic-sdlc-core. A single JSON
+object (`project`, `program_spec_ref`, `architecture_mode`, `stories`) - not
+JSON Lines, since it's written once rather than appended to. A point-in-time
+snapshot of what spec mode produced: `story-converter`'s plan mode (ticket
+syncs on scope/story amendment or completion) never rewrites this file, only
+the ticket system reflects what changed after creation.
+
+If `project-scoper` runs again against a project that's already been
+scoped, `story-converter` reads this file first so it doesn't duplicate an
+existing story id or recreate a ticket that already exists.
+
 ## stories/
 
 See `stories/README.md`.

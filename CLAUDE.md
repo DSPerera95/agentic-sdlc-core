@@ -6,13 +6,13 @@ This file is read automatically at the start of every Claude Code session in thi
 
 A reusable multi-agent orchestration layer for AI-assisted software development, distributed as a versioned core that individual projects install via `install.ps1` and vendor into their own `.claude/`. Two tiers: `project-scoper` runs once per project turning a PRD/existing repo into a story backlog; `feature-orchestrator` runs once per story, producing spec → plan → implementation → validation for that story alone, often by a different engineer than the one who scoped the project.
 
-Current version: see `VERSION` (currently `5.5.0`). Full history and the reasoning behind every change: `CHANGELOG.md` — read it before assuming why something is the way it is; it's usually already answered there.
+Current version: see `VERSION` (currently `7.0.0`). Full history and the reasoning behind every change: `CHANGELOG.md` — read it before assuming why something is the way it is; it's usually already answered there.
 
 ## Repo structure
 
 ```
-skills/      10 skills — run inline in the calling session
-agents/      4 agents  — risk-classifier, story-converter, validator, implementer
+skills/      9 skills — run inline in the calling session
+agents/      5 agents  — risk-classifier, story-converter, validator, implementer, bug-fixer
              (fixed-identity, always isolated, pinned model — see DESIGN-PRINCIPLES.md
              for why decision-recorder is deliberately NOT here despite looking similar)
 schemas/     task-graph, story-backlog, decision-log — the data contracts between everything

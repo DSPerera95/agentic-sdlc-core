@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Story Backlog",
-  "description": "Output of story-converter in spec mode, produced once per project by project-scoper. Each story is later handed off to an independent feature-orchestrator run.",
+  "description": "Output of story-converter in spec mode, produced once per project by project-scoper. Written to .claude/state/story-backlog.json as a single JSON object matching this schema exactly - not JSON Lines, since the backlog is written once (or once per re-run against an already-scoped project), never appended to incrementally. A point-in-time snapshot of what spec mode produced: story-converter's plan mode never rewrites it, only the ticket system reflects changes after creation. Each story is later handed off to an independent feature-orchestrator run.",
   "type": "object",
   "required": ["project", "stories"],
   "properties": {

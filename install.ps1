@@ -10,16 +10,25 @@
       - Copies agents/*      -> .claude/agents/      (always overwritten)
       - Copies schemas/*     -> .claude/schemas/     (always overwritten)
       - Copies scripts/*     -> .claude/scripts/      (always overwritten)
+      - Removes anything in .claude/skills, .claude/agents, .claude/schemas, or
+        .claude/scripts that no longer exists in the source at this ref - e.g.
+        a skill that moved to agents/ (or was deleted outright) between the
+        version you last installed and this one. Reported individually as
+        each one is removed, never silent.
       - Writes .claude/agentic-sdlc-core.version with the installed repo/ref/commit
       - Copies project-template/.claude/* -> .claude/  (only files that don't already exist,
         unless -Force is passed)
       - Adds .claude/analytics/ to this repo's .gitignore, only if a .gitignore
         already exists here and doesn't already cover it - never creates one
 
-    Skills, agents, schemas, and scripts are treated as "core" and always synced to the pinned ref.
-    CLAUDE.md, config/orchestration.yaml, and state/ are project-specific and are
-    never overwritten by default, so re-running this script to pick up a newer
-    core version is safe.
+    Skills, agents, schemas, and scripts are treated as "core" and always fully
+    mirrored to match the pinned ref - not just overwritten by name, but kept
+    free of anything stale. Do not hand-add your own files inside
+    .claude/skills, .claude/agents, .claude/schemas, or .claude/scripts - they
+    will be deleted on the next re-run if they don't exist in the core at the
+    ref you install. CLAUDE.md, config/orchestration.yaml, and state/ are
+    project-specific and are never overwritten by default, so re-running this
+    script to pick up a newer core version is safe for those.
 
 .PARAMETER RepoUrl
     Git URL of the agentic-sdlc-core repository.
@@ -57,6 +66,20 @@ function Write-Step($msg) { Write-Host "==> $msg" -ForegroundColor Cyan }
 function Write-Info($msg) { Write-Host "    $msg" -ForegroundColor Gray }
 function Write-Warn($msg) { Write-Host "!!  $msg" -ForegroundColor Yellow }
 function Write-Ok($msg)   { Write-Host "OK  $msg" -ForegroundColor Green }
+
+function Remove-StaleEntries([string]$SourceDir, [string]$DestDir, [string]$Label) {
+    $sourceNames = @(Get-ChildItem $SourceDir -Force | ForEach-Object { $_.Name })
+    $staleItems  = @(Get-ChildItem $DestDir -Force | Where-Object { $sourceNames -notcontains $_.Name })
+
+    foreach ($item in $staleItems) {
+        Write-Warn "Removing stale $Label no longer in the core: $($item.Name)"
+        Remove-Item -Recurse -Force $item.FullName
+    }
+
+    if ($staleItems.Count -gt 0) {
+        Write-Ok "$($staleItems.Count) stale $Label(s) removed"
+    }
+}
 
 # --- Preconditions ----------------------------------------------------------
 
@@ -102,6 +125,7 @@ if (Test-Path $skillsSrc) {
     Write-Step "Installing skills -> $skillsDest"
     New-Item -ItemType Directory -Force -Path $skillsDest | Out-Null
     Copy-Item -Path "$skillsSrc\*" -Destination $skillsDest -Recurse -Force
+    Remove-StaleEntries -SourceDir $skillsSrc -DestDir $skillsDest -Label "skill"
     $skillCount = (Get-ChildItem $skillsDest -Directory).Count
     Write-Ok "$skillCount skills installed"
 } else {
@@ -112,6 +136,7 @@ if (Test-Path $agentsSrc) {
     Write-Step "Installing agents -> $agentsDest"
     New-Item -ItemType Directory -Force -Path $agentsDest | Out-Null
     Copy-Item -Path "$agentsSrc\*" -Destination $agentsDest -Recurse -Force
+    Remove-StaleEntries -SourceDir $agentsSrc -DestDir $agentsDest -Label "agent"
     $agentCount = (Get-ChildItem $agentsDest -File -Filter "*.md").Count
     Write-Ok "$agentCount agents installed"
 } else {
@@ -122,6 +147,7 @@ if (Test-Path $schemasSrc) {
     Write-Step "Installing schemas -> $schemasDest"
     New-Item -ItemType Directory -Force -Path $schemasDest | Out-Null
     Copy-Item -Path "$schemasSrc\*" -Destination $schemasDest -Recurse -Force
+    Remove-StaleEntries -SourceDir $schemasSrc -DestDir $schemasDest -Label "schema file"
     Write-Ok "Schemas installed"
 } else {
     Write-Warn "No schemas/ folder found in the source repo at ref '$Ref' - skipped."
@@ -131,6 +157,7 @@ if (Test-Path $scriptsSrc) {
     Write-Step "Installing scripts -> $scriptsDest"
     New-Item -ItemType Directory -Force -Path $scriptsDest | Out-Null
     Copy-Item -Path "$scriptsSrc\*" -Destination $scriptsDest -Recurse -Force
+    Remove-StaleEntries -SourceDir $scriptsSrc -DestDir $scriptsDest -Label "script"
     Write-Ok "Scripts installed"
 } else {
     Write-Warn "No scripts/ folder found in the source repo at ref '$Ref' - skipped."

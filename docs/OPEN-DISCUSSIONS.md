@@ -53,4 +53,6 @@ The `skill-creator` example skill (available in Claude Code more broadly, not pa
 
 ## Agent/skill classification left unrevisited
 
-During the skills → agents migration, `spec-writer` and `implementation-planner` were explicitly flagged as "genuinely unsure, could go either way" and deliberately left as skills without a real decision either way. `bug-fixer` fits the same fixed-identity, no-human-interaction shape as `validator`/`implementer` but was out of scope when the other four were migrated and has never been revisited. None of these are settled — they're just untouched, not confirmed-correct.
+During the skills → agents migration, `spec-writer` and `implementation-planner` were explicitly flagged as "genuinely unsure, could go either way" and deliberately left as skills without a real decision either way. Neither is settled — they're just untouched, not confirmed-correct.
+
+`bug-fixer` was in the same unrevisited bucket and has since moved to `agents/` (see `CHANGELOG.md`) - unlike `spec-writer`/`implementation-planner`, its call sites were actually audited first: all of them already passed explicit input rather than leaning on session history, and one real gap (`build-feature`'s call site wasn't explicitly passing validator's findings) was fixed before the move, not glossed over.

@@ -25,7 +25,7 @@ Delegate to the implementer agent, scoped to the confirmed file(s) only. Follow 
 Delegate to the validator agent at low effort — this path only runs for L1 work, the lowest risk tier.
 
 If issues exist:
-- invoke /bug-fixer
+- delegate to the bug-fixer agent at low effort, same tier as above, with the validator agent's structured findings (failed checks, recommended fixes) passed explicitly as input — it has no access to this session's history by design, so it should be acting on what validator already found, not rediscovering it
 - delegate to the validator agent again, same low effort as above
 
 ## Phase 4 — Summary

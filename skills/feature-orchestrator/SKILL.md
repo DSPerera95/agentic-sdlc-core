@@ -7,11 +7,13 @@ user-invocable: true
 
 ## Agents vs skills
 
-The risk-classifier, story-converter, validator, and implementer agents (`.claude/agents/`) are fixed-identity workers: they always run isolated, in a fresh context, on a pinned model, and return a single result. Delegate to them by name, give them everything they need explicitly (they have no access to this session's history), and treat their return value as final for that call.
+The risk-classifier, story-converter, validator, implementer, and bug-fixer agents (`.claude/agents/`) are fixed-identity workers: they always run isolated, in a fresh context, on a pinned model, and return a single result. Delegate to them by name, give them everything they need explicitly (they have no access to this session's history), and treat their return value as final for that call.
 
-/repo-discovery, /grill-me, /spec-writer, /implementation-planner, /decision-recorder, /bug-fixer, /build-feature, /context-compressor (`.claude/skills/`) run inline in this session, the traditional skill way. /decision-recorder specifically belongs here rather than in `agents/`: it's invoked at least three times per story plus every amendment, the highest frequency of anything in this system, and its whole job is capturing the reasoning behind a decision that just happened in this same conversation — isolating it would mean re-explaining that reasoning explicitly every time, which risks losing nuance rather than saving anything.
+/repo-discovery, /grill-me, /spec-writer, /implementation-planner, /decision-recorder, /build-feature, /context-compressor (`.claude/skills/`) run inline in this session, the traditional skill way. /decision-recorder specifically belongs here rather than in `agents/`: it's invoked at least three times per story plus every amendment, the highest frequency of anything in this system, and its whole job is capturing the reasoning behind a decision that just happened in this same conversation — isolating it would mean re-explaining that reasoning explicitly every time, which risks losing nuance rather than saving anything.
 
 `implementer` used to be a skill specifically because its isolation was conditional on `parallel_group` — solo tasks ran inline to skip re-establishing context. That conditionality was removed: the measured downside (solo tasks silently inheriting whatever model the session happened to be on, rather than a guaranteed model/effort tier) turned out to be a real, immediate cost, while the token savings it was trading for were never actually measured. Every implementer call is isolated now, so it moved to `agents/` with the rest of the fixed-identity workers.
+
+`bug-fixer` moved from a skill to an agent for the same reason: every one of its call sites already gives it explicit input (validator's structured findings, or nothing when there's genuinely no prior diagnosis) rather than leaning on this session's history, and as a skill it inherited whatever model the session happened to be on instead of a guaranteed tier — the same gap that moved `implementer`. One real dependency on inline visibility was found and fixed before the move: `/build-feature`'s call site wasn't explicitly passing validator's findings, relying on `bug-fixer` being able to see them in the shared session instead.
 
 ## Model tiers
 
@@ -20,6 +22,7 @@ Unless a step below says otherwise:
 - risk-classifier, story-converter agents: Claude Haiku 4.5 — classification and ticket formatting don't need a heavier model.
 - implementer agent: always Claude Sonnet 5 at high effort, for every task regardless of `parallel_group`.
 - validator agent: always Claude Sonnet 5. Effort scales with this story's risk tier from step 2, passed explicitly on every call since validator has no session history to determine it itself: low for L1 (via /build-feature), medium for L2, high for L3.
+- bug-fixer agent: always Claude Sonnet 5. Effort scales with this story's risk tier the same way validator's does: low for L1 (via /build-feature), medium for L2 and for the bug-fix-only workflow (no risk tier to scale from there), high for L3.
 - /context-compressor: inline, never isolated, on whatever model this session is already using — it has to see this session's actual accumulated context to compress it, so isolation isn't compatible with its job.
 
 ## Standard workflow (feature development)
@@ -43,7 +46,7 @@ Unless a step below says otherwise:
     - If the implementer agent reports it cannot complete a task within its declared `files_touched`, this is a scope gap, not a failure — pause that task and run the "Scope amendment loop" below before resuming it. Other tasks with no dependency on it continue unaffected.
 12. Delegate to the validator agent, at the effort level matching this story's risk tier from step 2 (medium for L2, high for L3 — L1 goes through /build-feature instead and never reaches this step) — give it the diff, the approved spec, the approved plan, and acceptance criteria as explicit input; it has no access to this session's history by design. A reviewer with no memory of how the implementation was built catches more than one reviewing its own work.
 13. If blocking issues exist (see the validator agent's blocking/non-blocking distinction):
-    - invoke /bug-fixer, scoped to the failing task(s), with the validator agent's structured findings (failed checks, recommended fixes) passed explicitly as input — it should be acting on what validator already found, not rediscovering it
+    - delegate to the bug-fixer agent, at the same effort level as step 12, scoped to the failing task(s), with the validator agent's structured findings (failed checks, recommended fixes) passed explicitly as input — it has no access to this session's history by design, so it should be acting on what validator already found, not rediscovering it
     - delegate to the validator agent again — a fresh call, same explicit inputs and same risk-tier effort level as step 12
 14. Invoke /decision-recorder to capture the final delivery decisions
 15. Produce final delivery summary, including any non-blocking code review findings from the validator agent — these don't gate delivery but should be visible to whoever reads the summary
@@ -84,8 +87,8 @@ Triggered when this story's assigned `context_mode` (`independent` or `decision-
 ## Bug-fix-only workflow
 
 1. Invoke /repo-discovery
-2. Invoke /bug-fixer
-3. Delegate to the validator agent at medium effort, given the diff and the fix's intended scope as explicit input — this workflow doesn't run risk-classifier, so there's no risk tier to scale from; medium is a fixed, reasonable default rather than defaulting to high for every bug fix regardless of stakes
+2. Delegate to the bug-fixer agent at medium effort, given the reported bug as explicit input — this workflow doesn't run risk-classifier, so there's no risk tier to scale from; medium is a fixed, reasonable default rather than defaulting to high for every bug fix regardless of stakes. There's no prior validator pass here, so bug-fixer works through its full reproduce/root-cause sequence from scratch.
+3. Delegate to the validator agent at medium effort, given the diff and the fix's intended scope as explicit input — same fixed-default reasoning as step 2
 4. Produce fix summary
 
 ## Stop immediately and request clarification when:

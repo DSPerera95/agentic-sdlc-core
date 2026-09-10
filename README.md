@@ -4,12 +4,12 @@ A reusable multi-agent orchestration layer for AI-assisted software development,
 
 ## What's in here
 
-- **`skills/`** — 10 skills that run inline in the calling session:
+- **`skills/`** — 9 skills that run inline in the calling session:
   - **Program scoping** (`project-scoper`) — turns a PRD or an existing repo into an approved story backlog, run once per project.
   - **Story execution** (`feature-orchestrator` and everything else it calls) — runs once per story, often by a different engineer, producing spec → plan → implementation → validation for that story alone.
-- **`agents/`** — 4 fixed-identity subagents, always isolated, always on a pinned model, invoked by `feature-orchestrator`/`project-scoper` rather than run inline: `risk-classifier`, `story-converter`, `validator`, `implementer`. `decision-recorder` deliberately isn't one of these — it's invoked at least three times per story plus every amendment, the highest frequency of anything here, and it's capturing reasoning that just happened in the calling session, so isolating it would mean re-explaining that reasoning rather than saving anything.
+- **`agents/`** — 5 fixed-identity subagents, always isolated, always on a pinned model, invoked by `feature-orchestrator`/`project-scoper` rather than run inline: `risk-classifier`, `story-converter`, `validator`, `implementer`, `bug-fixer`. `decision-recorder` deliberately isn't one of these — it's invoked at least three times per story plus every amendment, the highest frequency of anything here, and it's capturing reasoning that just happened in the calling session, so isolating it would mean re-explaining that reasoning rather than saving anything.
 - **`schemas/`** — the data contracts that let these hand off to each other and to external tools (a ticketing system, a dashboard) without ambiguity:
-  - `story-backlog.schema.json` — output of the `story-converter` agent (spec mode)
+  - `story-backlog.schema.json` — output of the `story-converter` agent (spec mode), written once per project to `.claude/state/story-backlog.json`
   - `task-graph.schema.json` — output of `implementation-planner`
   - `decision-log.schema.json` — one line of `decision-log.jsonl` per entry, written by `decision-recorder`
 - **`scripts/`** — three maintenance scripts, run manually and on demand, none run automatically by anything else in this system:
@@ -31,7 +31,7 @@ feature-orchestrator                        (once per story, per engineer)
   → L1 → build-feature (fast path)
   → L2/L3 → grill-me, spec-writer, implementation-planner → task-graph.schema.json
           → implementer agent × N (Sonnet 5, high effort) — sequential + concurrent per parallel_group
-          → validator agent (Sonnet 5, effort scaled to risk tier: low/medium/high), bug-fixer as needed
+          → validator agent (Sonnet 5, effort scaled to risk tier: low/medium/high), bug-fixer agent as needed
           → decision-recorder               → decision-log.schema.json, one JSONL line (always written, regardless of context_mode)
           → story-converter agent, plan mode (Haiku 4.5)     → marks the story's one ticket complete
 ```
