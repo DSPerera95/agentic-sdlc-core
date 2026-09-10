@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Task Graph",
-  "description": "Output of implementation-planner for one story. Consumed by feature-orchestrator (step 11) to sequence and parallelize implementer runs, and by story-converter in plan mode to create/sync tracked tickets. Saved at .claude/state/stories/<story-id>/plan.json",
+  "description": "Output of implementation-planner for one story. Consumed by feature-orchestrator (step 11) to sequence and parallelize implementer runs, and by story-converter in plan mode to create/sync tracked tickets. Written by feature-orchestrator to <stories_dir>/<story-id>-<slug>/plan.json, where stories_dir comes from config/orchestration.yaml - not a fixed path.",
   "type": "object",
   "required": ["story_id", "tasks"],
   "properties": {

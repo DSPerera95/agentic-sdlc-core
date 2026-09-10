@@ -7,11 +7,13 @@ agentic_sdlc_core_version: "5.4.1"   # keep in sync with the -Ref passed to inst
 
 # Default context_mode assigned to a story when story-converter (spec mode)
 # has no clear reason to override it. Can still be overridden per story.
+# One of: full-spec | decision-log-only | independent
 context_mode_default: decision-log-only
 
 risk_thresholds:
-  l1_max_files: 1        # above this, risk-classifier should not return L1
-  l1_excludes:            # never classify these as L1 regardless of file count
+  l1_max_files: 1        # a strong signal, not a hard rule - above this, risk-classifier
+                          # usually shouldn't return L1, but can override with explicit reasons
+  l1_excludes:            # an absolute floor - never L1 for these, regardless of file count
     - auth
     - payments
     - migrations
@@ -22,6 +24,11 @@ ticket_system:
   # board_id / org_url / etc. as needed by your Jira or ADO integration
 
 state_dir: .claude/state
+
+# Where per-story state (spec.md, plan.json, ticket.json) is written, one
+# folder per story. Independently configurable, not assumed to sit inside
+# state_dir above - point it wherever suits this project's layout.
+stories_dir: .claude/state/stories
 
 # Thresholds for scripts/rotate-decision-log.ps1 — not read automatically by any
 # skill or agent, since that script doesn't parse this file. Keep these two values

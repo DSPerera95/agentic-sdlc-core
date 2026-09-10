@@ -1,5 +1,23 @@
 # Changelog
 
+## 7.2.0 — context_mode_default wired up; stories_dir made configurable
+
+**Added**
+- `project-scoper` now explicitly reads `context_mode_default` from `config/orchestration.yaml` and passes it to `story-converter` alongside `architecture_mode`, instead of `story-converter.md` just asserting "default to the project's configured default" with no instruction anywhere on how that value actually reaches it.
+- New `stories_dir` field in `orchestration.yaml`, independently configurable rather than assumed to live under `state_dir` - defaults to `.claude/state/stories`, matching the existing layout, but a project can point it anywhere.
+- `feature-orchestrator` now explicitly writes `spec.md` and `plan.json` to `<stories_dir>/<story-id>-<slug>/` after each approval gate (steps 6 and 9), reads `plan.json` back and updates task `status` as execution progresses (step 11), and rewrites it on every Scope/Story amendment - none of this was previously stated anywhere, not even against the old hardcoded path.
+- `story-converter` now explicitly creates each story's directory and writes `ticket.json` there in spec mode, and appends to its sync log there in plan mode - both were previously undocumented in `story-converter.md` itself, only implied by `project-template/.claude/state/stories/README.md`'s passive description of the convention.
+
+**Why**: same audit habit as `risk_thresholds` in 7.1.0, applied to two more places. `context_mode_default` turned out to be a milder version of the same gap - referenced conceptually in `project-scoper`/`story-converter`, but never with an explicit "read this, pass it" instruction, unlike `architecture_mode` one sentence away in the same paragraph, which already had one. `stories_dir` surfaced a deeper issue while making it configurable: nothing in `feature-orchestrator`, `spec-writer`, `implementation-planner`, or `story-converter` ever explicitly wrote `spec.md`, `plan.json`, or `ticket.json` to disk at all - the entire per-story file layout existed only as passive documentation in `stories/README.md`, never as an instruction any skill or agent actually followed. Making the path configurable without fixing that would have just added a config value nothing reads, the exact failure mode this repo has now caught three times (`risk-classifier`'s own output in 1.0.0, `risk_thresholds` in 7.1.0, and this).
+
+## 7.1.0 — risk_thresholds actually wired into risk-classifier
+
+**Added**
+- `feature-orchestrator` step 2 now passes `orchestration.yaml`'s `risk_thresholds` (`l1_max_files`, `l1_excludes`) to the `risk-classifier` agent as explicit input on every call - it has no access to project config itself, so this was always going to have to be passed, not read.
+- `risk-classifier` treats the two fields differently rather than as a single kind of constraint: `l1_excludes` is an absolute floor (any listed area rules out L1, full stop, regardless of file count or apparent simplicity); `l1_max_files` is a strong signal, not a mechanical gate - exceeding it should usually rule out L1, but the agent can still return L1 if it explicitly justifies why in `reasons`. Config comments in `project-template/.claude/config/orchestration.yaml` updated to state this distinction plainly rather than reading as a single flat rule.
+
+**Why**: `risk_thresholds` had existed in `orchestration.yaml` since early in this project's history, with an inline comment describing intent ("above this, risk-classifier should not return L1"), but nothing ever actually read or passed it - `risk-classifier.md`'s L1/L2/L3 criteria were purely categorical, with no file-count threshold or project-specific excludes wired in anywhere. Same failure mode this repo has already shipped once before (`risk-classifier`'s own output not being branched on, in the original 1.0.0-era history) - computed-or-configured-but-unused data, caught the same way: by actually checking whether something documented as working was actually connected to anything. Considered making `l1_max_files` a hard mechanical gate applied by `feature-orchestrator` before classification even happens, matching `l1_excludes`'s strictness - rejected, since a rigid file-count ceiling risks becoming exactly the "broad default that blocks" this repo already avoids elsewhere (`context_mode`, `depends_on`): a trivial multi-file rename shouldn't lose the fast path just because it crossed an arbitrary count. `l1_excludes` earns the stricter treatment specifically because it's the one thing a shared core structurally can't provide on its own - a project's own sensitive domains beyond whatever's generically hardcoded as L3.
+
 ## 7.0.0 — install.ps1 removes stale skills/agents/schemas/scripts on re-sync
 
 **Breaking**

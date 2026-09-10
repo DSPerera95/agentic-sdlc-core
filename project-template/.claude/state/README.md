@@ -47,6 +47,10 @@ If `project-scoper` runs again against a project that's already been
 scoped, `story-converter` reads this file first so it doesn't duplicate an
 existing story id or recreate a ticket that already exists.
 
-## stories/
+## stories/ (path configurable)
 
-See `stories/README.md`.
+Defaults to `state/stories/`, but the actual location comes from
+`stories_dir` in `config/orchestration.yaml` - it isn't assumed to sit
+under `state/` at all, so check that value rather than assuming this path.
+See `stories/README.md` (or wherever `stories_dir` actually points) for
+what lives inside each story's own directory.

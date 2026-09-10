@@ -81,7 +81,9 @@ This installs:
     ├── README.md                 # what's in state/ and how rotation works (scaffolded once)
     ├── decision-log.jsonl        # append-only JSONL, committed
     ├── decision-log-archive/     # rotated-out entries, one file per rotation run
-    └── stories/                  # one folder per story once work starts
+    ├── story-backlog.json        # written once by story-converter (spec mode)
+    └── stories/                  # default location - one folder per story; actual
+                                   # path comes from stories_dir in orchestration.yaml
 ```
 
 `skills/`, `agents/`, `schemas/`, and `scripts/` are always overwritten with whatever `-Ref` points to — they're core, and a re-run is how a project takes an update. `CLAUDE.md`, `config/orchestration.yaml`, and `state/` are only created if missing, so re-running the script to pick up a newer core version never clobbers project-specific config or the decision log. Pass `-Force` if you deliberately want those reset from the template too.
@@ -100,6 +102,7 @@ ticket_system:
   provider: jira
   project_key: YOUR_KEY
 state_dir: .claude/state
+stories_dir: .claude/state/stories
 ```
 
 Fill in `.claude/CLAUDE.md` with this project's architecture, conventions, and domain glossary — this is prose the skills and agents read, not settings they branch on, so keep structured decisions in `orchestration.yaml` instead.
@@ -151,6 +154,8 @@ flowchart TD
 ```
 
 **Risk-driven branching.** The `risk-classifier` agent isn't advisory — L1 work (isolated fixes, config, styling) actually routes to `build-feature`, a single scope-confirmation and a direct implement → validate, skipping the full ceremony. L2/L3 work goes through the complete chain.
+
+**L1 has a project-configurable floor, not just categorical judgment.** `risk-classifier` has no access to project config itself, so `feature-orchestrator` passes `orchestration.yaml`'s `risk_thresholds` explicitly on every call. `l1_excludes` is absolute - a project's own sensitive areas (beyond whatever's already hardcoded as L3 in `risk-classifier.md`) never get L1, no matter how simple the change looks. `l1_max_files` is a strong signal rather than a mechanical gate - exceeding it should usually rule out L1, but the agent can still classify L1 if it explicitly justifies why in its returned `reasons`, rather than a config number silently overriding judgment either way.
 
 **`validator` and `bug-fixer` are both agents, for the same reason.** Each is given everything it needs as explicit input — `validator` gets the diff, the approved spec, the approved plan, and acceptance criteria; `bug-fixer` gets `validator`'s structured findings (failed checks, recommended fixes) when a prior review exists, or the bug report itself when it doesn't (the bug-fix-only workflow). Neither has access to this session's history at all, by construction, not just by instruction. A reviewer with no memory of how the code got built catches more than one reviewing its own work, the same reason human teams avoid self-review — and a fixer acting on a diagnosis it was actually handed, rather than one it has to rediscover from a shared conversation, gets the same benefit.
 

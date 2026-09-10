@@ -54,7 +54,7 @@ Run `install.ps1` from the root of the target project repo:
 
 This clones agentic-sdlc-core at the pinned ref (a tag, branch, or commit), installs all skills into `.claude/skills/`, all agents into `.claude/agents/`, the schemas into `.claude/schemas/`, and both maintenance scripts into `.claude/scripts/`, records what's installed in `.claude/agentic-sdlc-core.version`, and scaffolds `.claude/CLAUDE.md`, `.claude/config/orchestration.yaml`, and `.claude/state/` from `project-template/` — but only creates files that don't already exist, so re-running it is safe and never clobbers a project's own config or decision log.
 
-Fill in `.claude/config/orchestration.yaml` for that project afterward — ticket system, `context_mode_default`, risk thresholds. See `project-template/.claude/config/orchestration.yaml` for the format.
+Fill in `.claude/config/orchestration.yaml` for that project afterward — ticket system, `context_mode_default`, risk thresholds, `stories_dir`. See `project-template/.claude/config/orchestration.yaml` for the format.
 
 **To update a project to a newer core version**, re-run with a new `-Ref`:
 

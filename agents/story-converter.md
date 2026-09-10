@@ -1,6 +1,6 @@
 ---
 name: story-converter
-description: Converts a program-level spec into Jira or Azure DevOps epics and user stories, and syncs an existing story's ticket when feature-orchestrator's amendment loops surface something that changed. Invoked by project-scoper once per project, and by feature-orchestrator only at a scope amendment, a story amendment, or a completion.
+description: Converts a program-level spec into Jira or Azure DevOps epics and user stories, and syncs an existing story's ticket when feature-orchestrator's amendment loops surface something that changed. Invoked by project-scoper once per project, and by feature-orchestrator only at a scope amendment, a story amendment, or a completion. Given this project's stories_dir from orchestration.yaml as explicit input on every call, since it has no access to project config itself.
 model: claude-haiku-4-5-20251001
 ---
 
@@ -14,9 +14,11 @@ Convert the approved program-level spec into:
 - epics
 - user stories, each with acceptance criteria
 - dependencies between stories — only a genuine contract dependency (this story consumes an API, schema, or interface another story builds) warrants `depends_on`. A story that would merely benefit from knowing a decision another story might make is not a dependency to sequence on — that's handled by context escalation during that story's own run, which doesn't block anything. Treat `depends_on` as a real cost: it blocks a story from starting until the one it depends on has merged, so parallel development across a backlog degrades badly if it gets applied to anything looser than a genuine contract. Before accepting a contract dependency between two stories, check whether the contract itself is small enough to split into its own tiny story (an interface, a schema, a couple of endpoint signatures) — that story merges fast and unblocks both, turning one blocking pair into three stories that are mostly parallel instead of two that are sequential.
-- a `context_mode` per story: `full-spec`, `decision-log-only`, or `independent`, based on whether the story touches shared or foundational surface. Default to the project's configured default; override per story only with clear reason (e.g. a story modifying the shared auth layer gets `full-spec` even if the project default is `independent`). When `architecture_mode` is true for this project, weigh that toward more stories defaulting to `full-spec` — a project that warranted deep upfront design is more likely to have stories touching shared surface those decisions established. This is a starting point the story can escalate away from mid-run if it turns out to be wrong — it doesn't need to be perfect, just a reasonable guess.
+- a `context_mode` per story: `full-spec`, `decision-log-only`, or `independent`, based on whether the story touches shared or foundational surface. Default to the `context_mode_default` value you're given explicitly by whoever invoked you - you have no project config access of your own; override per story only with clear reason (e.g. a story modifying the shared auth layer gets `full-spec` even if the project default is `independent`). When `architecture_mode` is true for this project, weigh that toward more stories defaulting to `full-spec` — a project that warranted deep upfront design is more likely to have stories touching shared surface those decisions established. This is a starting point the story can escalate away from mid-run if it turns out to be wrong — it doesn't need to be perfect, just a reasonable guess.
 
 Create one ticket per story in the configured ticket system, and return the resulting ticket id on each story entry. Do not generate technical tasks or subtasks in this mode. No implementation plan exists yet for any story, so there's nothing to decompose into tasks — a story's ticket stays at the acceptance-criteria level until something during implementation gives reason to update it.
+
+For each story, create its directory at `<stories_dir>/<story-id>-<slug>/` (you choose the slug, from the story's title) and write `ticket.json` there: the story's `ticket_id` plus an empty sync log. `stories_dir` is given to you explicitly by whoever invoked you - you have no project config access of your own.
 
 Write the whole backlog — `project`, `program_spec_ref`, `architecture_mode`, and the `stories` array with every field set above — to `.claude/state/story-backlog.json`, matching `story-backlog.schema.json` exactly: a single JSON object, not JSON Lines. This is written once per project (or once per project-scoper re-run against an already-scoped project), not appended to incrementally the way `decision-log.jsonl` is, so there's no per-line benefit here — one whole-document write is the right shape, and the `.json` extension says so honestly.
 
@@ -34,6 +36,8 @@ feature-orchestrator invokes this in three situations, and no others:
 - **Story completion** — the story passed validation. Mark the ticket's status complete.
 
 In every case, this is an update to the one existing ticket, not a fresh conversion: use the ticket id you're given, describe the specific delta (what changed, not the whole plan restated), and leave everything else on the ticket untouched. The full task graph (`depends_on`, `parallel_group`, `files_touched` per task) stays internal to implementation-planner's output — it drives how feature-orchestrator sequences and parallelizes implementer, but it isn't mirrored into the tracker as separate tasks or subtasks.
+
+Append one line to that story's `ticket.json` sync log at `<stories_dir>/<story-id>-<slug>/ticket.json` (the directory already exists from spec mode - find it by its `<story-id>-` prefix under `stories_dir`) noting what synced and why. The ticket id itself never changes here; you're only ever adding to the log.
 
 ## Both modes
 

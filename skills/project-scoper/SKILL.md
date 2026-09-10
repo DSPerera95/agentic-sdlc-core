@@ -44,14 +44,14 @@ Invoke /decision-recorder to capture the scope decisions made in Phases 2-3. Thi
 
 ## Phase 5 — Story backlog
 
-Delegate to the story-converter agent, in spec mode, against the approved program spec. Pass along whether architecture mode was on for this run — story-converter sets `architecture_mode` on the backlog output (see `story-backlog.schema.json`) and weighs it toward more stories defaulting to `full-spec` context_mode, since a project that warranted deep upfront design is more likely to have stories touching shared surface those decisions established.
+Delegate to the story-converter agent, in spec mode, against the approved program spec. Read `context_mode_default` and `stories_dir` from `config/orchestration.yaml` and pass both explicitly, alongside whether architecture mode was on for this run — story-converter has no project config access of its own, so all three have to come from you, not be assumed. story-converter sets `architecture_mode` on the backlog output (see `story-backlog.schema.json`) and weighs it toward more stories defaulting to `full-spec` context_mode, since a project that warranted deep upfront design is more likely to have stories touching shared surface those decisions established.
 
 For each resulting story, story-converter also assigns a `context_mode`:
 - `full-spec` — story touches shared or foundational surface (auth, shared schema, core interfaces); its /feature-orchestrator run should load the full program spec as reference
 - `decision-log-only` — story is largely independent but should stay aware of engagement-wide decisions
 - `independent` — story is fully self-contained
 
-The default `context_mode` for the project comes from project config; story-converter may override it per story where it has clear reason to.
+The default `context_mode` for the project is the `context_mode_default` value you just passed in; story-converter may override it per story where it has clear reason to.
 
 STOP. Present the story backlog with each story's `context_mode`. Ask: "Approve backlog? (yes / feedback)"
 

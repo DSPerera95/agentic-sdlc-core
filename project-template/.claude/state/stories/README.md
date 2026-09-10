@@ -1,5 +1,11 @@
 # Story state
 
+This is the default location - the actual path is `stories_dir` in
+`config/orchestration.yaml`, independently configurable and not assumed to
+sit under `state/` at all. If you've pointed `stories_dir` elsewhere, this
+folder (and this file) won't exist; the same layout below applies wherever
+it's configured to.
+
 One directory per story, named `<story-id>-<short-slug>/`, created when
 project-scoper approves the backlog. Each contains:
 

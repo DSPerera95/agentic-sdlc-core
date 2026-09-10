@@ -27,22 +27,22 @@ Unless a step below says otherwise:
 
 ## Standard workflow (feature development)
 
-0. If this run is executing one story from a /project-scoper backlog, load context per that story's `context_mode` before proceeding: `full-spec` loads the program-level spec as reference for /grill-me and /spec-writer; `decision-log-only` loads only the shared decision log; `independent` loads neither. This is a starting point, not fixed for the run — see "Context escalation" below. This only affects what context is available going in — decision-recorder writes at steps 7, 10, and 14 below always happen regardless of `context_mode`.
+0. If this run is executing one story from a /project-scoper backlog, load context per that story's `context_mode` before proceeding: `full-spec` loads the program-level spec as reference for /grill-me and /spec-writer; `decision-log-only` loads only the shared decision log; `independent` loads neither. This is a starting point, not fixed for the run — see "Context escalation" below. This only affects what context is available going in — decision-recorder writes at steps 7, 10, and 14 below always happen regardless of `context_mode`. Also read `stories_dir` from `config/orchestration.yaml` now — every per-story file this run writes (steps 6 and 9 below) goes under `<stories_dir>/<story-id>-<slug>/`, this project's configured location, never a hardcoded path.
 1. Invoke /repo-discovery
-2. Delegate to the risk-classifier agent
+2. Delegate to the risk-classifier agent, with this project's `risk_thresholds` (`l1_max_files`, `l1_excludes`) from `config/orchestration.yaml` passed explicitly as input — it has no access to project config itself. `l1_excludes` is an absolute floor the agent enforces; `l1_max_files` is a strong signal it weighs and must justify overriding, not a mechanical gate applied here.
 3. If risk level is L1: invoke /build-feature (fast path) and stop here — skip steps 4-16.
 4. Invoke /grill-me. If it turns out this story genuinely can't be resolved with the context it was assigned, see "Context escalation" below before continuing.
 5. Invoke /spec-writer. Same escalation trigger applies here if the gap only becomes apparent while writing the spec.
-6. Wait for explicit user approval
+6. Wait for explicit user approval, then write the approved spec to `<stories_dir>/<story-id>-<slug>/spec.md`.
 7. Invoke /decision-recorder to capture the approved spec's key decisions
 8. Invoke /implementation-planner
-9. Wait for explicit user approval
+9. Wait for explicit user approval, then write the approved plan to `<stories_dir>/<story-id>-<slug>/plan.json`, matching `task-graph.schema.json` — this is the on-disk copy step 11 below reads from and updates as tasks progress.
 10. Invoke /decision-recorder to capture the approved plan's key decisions
-11. Execute the plan's task graph:
+11. Execute the plan's task graph, reading and updating `plan.json` from step 9 as tasks progress:
     - A task starts only once every task in its `depends_on` list has passed validation.
     - For each task that's ready, delegate to the implementer agent, scoped to that task's id and its declared `files_touched` only.
     - Tasks sharing the same `parallel_group` run as separate concurrent implementer calls — this is what makes them actually concurrent rather than sequential turns labeled parallel. Tasks with `parallel_group: null` run one at a time — still isolated, still Sonnet 5 at high effort, just not concurrent with anything else.
-    - The task graph itself (`depends_on`, `parallel_group`, `files_touched`) stays internal state for this step to work from — it is not mirrored into the ticket system. The story has exactly one ticket, created back in /project-scoper; nothing here creates another.
+    - Update each task's `status` in `plan.json` as it moves through `pending` -> `in_progress` -> `validated`/`failed`/`blocked_scope_gap` — this is what lets `depends_on` be checked against real progress rather than assumed. The task graph itself (`depends_on`, `parallel_group`, `files_touched`) stays internal state for this step to work from — it is not mirrored into the ticket system. The story has exactly one ticket, created back in /project-scoper; nothing here creates another.
     - If the implementer agent reports it cannot complete a task within its declared `files_touched`, this is a scope gap, not a failure — pause that task and run the "Scope amendment loop" below before resuming it. Other tasks with no dependency on it continue unaffected.
 12. Delegate to the validator agent, at the effort level matching this story's risk tier from step 2 (medium for L2, high for L3 — L1 goes through /build-feature instead and never reaches this step) — give it the diff, the approved spec, the approved plan, and acceptance criteria as explicit input; it has no access to this session's history by design. A reviewer with no memory of how the implementation was built catches more than one reviewing its own work.
 13. If blocking issues exist (see the validator agent's blocking/non-blocking distinction):
@@ -50,7 +50,7 @@ Unless a step below says otherwise:
     - delegate to the validator agent again — a fresh call, same explicit inputs and same risk-tier effort level as step 12
 14. Invoke /decision-recorder to capture the final delivery decisions
 15. Produce final delivery summary, including any non-blocking code review findings from the validator agent — these don't gate delivery but should be visible to whoever reads the summary
-16. Delegate to the story-converter agent, in plan mode, to mark the story's ticket complete
+16. Delegate to the story-converter agent, in plan mode, with `stories_dir` from step 0 passed explicitly, to mark the story's ticket complete
 
 ## Scope amendment loop
 
@@ -60,19 +60,20 @@ Triggered whenever the implementer agent reports a `files_touched` gap during st
 2. Re-invoke /implementation-planner scoped to only that gap — not a full re-plan. It amends the task's `files_touched`, or creates a new dependent task if the addition is substantial enough to deserve its own acceptance criteria.
 3. Re-check the parallel-safety rule for the affected task against every other task in its `parallel_group`. If the amendment introduces a new file-set overlap, resequence: drop the affected task to `parallel_group: null` (or split it into its own group) and add a `depends_on` edge if the collision requires strict ordering.
 4. Get a lightweight approval: "implementer flagged that <task> also needs <file> — approve adding it to scope?" This is a one-line delta sign-off, not the full plan-approval gate — don't re-run step 9 in full for a single-file addition.
-5. Delegate to the story-converter agent, in plan mode, to note the amended scope on the story's ticket — a short delta, not a restatement of the task graph.
-6. Delegate to the implementer agent again on the task with its amended `files_touched`. This is a fresh call reading the file's current on-disk state, not a resume of a paused process — nothing needs to carry over in memory, because whatever was already built is sitting in the files themselves, and the agent discovers its own prior partial work the same way it discovers anything else about the task: by reading what it's scoped to.
+5. Write the amended task graph back to `<stories_dir>/<story-id>-<slug>/plan.json` — the on-disk copy from step 9 must reflect the amendment before implementer resumes, not just this session's memory of it.
+6. Delegate to the story-converter agent, in plan mode, with `stories_dir` from step 0 passed explicitly, to note the amended scope on the story's ticket — a short delta, not a restatement of the task graph.
+7. Delegate to the implementer agent again on the task with its amended `files_touched`. This is a fresh call reading the file's current on-disk state, not a resume of a paused process — nothing needs to carry over in memory, because whatever was already built is sitting in the files themselves, and the agent discovers its own prior partial work the same way it discovers anything else about the task: by reading what it's scoped to.
 
 ## Story amendment loop
 
 Triggered whenever this story's acceptance criteria change after the spec was approved — whether the plan has started, is underway, or is already implemented.
 
 1. Record what changed and why: the delta between the old and new acceptance criteria.
-2. Re-invoke /spec-writer scoped to the delta to amend the approved spec — don't restart it from scratch.
-3. If a plan already exists, re-invoke /implementation-planner scoped to the same delta to patch the task graph. Re-check the parallel-safety rule for any task the amendment touches, same as in the Scope amendment loop.
+2. Re-invoke /spec-writer scoped to the delta to amend the approved spec — don't restart it from scratch. Write the amended spec back to `<stories_dir>/<story-id>-<slug>/spec.md` from step 6 of the main workflow.
+3. If a plan already exists, re-invoke /implementation-planner scoped to the same delta to patch the task graph. Re-check the parallel-safety rule for any task the amendment touches, same as in the Scope amendment loop. Write the amended plan back to `<stories_dir>/<story-id>-<slug>/plan.json` from step 9.
 4. If work already implemented conflicts with the new criteria, surface that explicitly rather than silently reworking already-validated tasks.
 5. Invoke /decision-recorder unconditionally, regardless of this story's `context_mode` — an acceptance-criteria change is exactly the kind of thing sibling stories may need visibility into, even under `independent` mode.
-6. Delegate to the story-converter agent, in plan mode, to reflect the new criteria on the story's ticket — what changed and why, not the whole spec restated.
+6. Delegate to the story-converter agent, in plan mode, with `stories_dir` from step 0 passed explicitly, to reflect the new criteria on the story's ticket — what changed and why, not the whole spec restated.
 7. Get a lightweight approval for the delta, same shape as the Scope amendment loop's approval — not a full spec re-approval unless the change is substantial enough to warrant one.
 
 ## Context escalation
