@@ -1,5 +1,10 @@
 # Changelog
 
+## 7.4.0 — install.ps1 creates .claude/analytics/ up front
+
+**Added**
+- `install.ps1` now creates `.claude/analytics/` during install (idempotent - safe to re-run, no error if it already exists) instead of leaving it to be created lazily the first time `token-usage-report.ps1 -Html` runs. The `.gitignore` entry from 5.5.0 already assumed this folder would exist; now the installer actually brings it into existence up front rather than only wiring the ignore rule for a folder that might not be there yet.
+
 ## 7.3.0 — install.ps1 additively merges orchestration.yaml
 
 **Added**

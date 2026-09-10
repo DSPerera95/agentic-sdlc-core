@@ -26,8 +26,10 @@
         top-level properties are added this way; a new property nested inside
         one that already exists (e.g. a future addition under
         risk_thresholds) is not detected on its own.
-      - Adds .claude/analytics/ to this repo's .gitignore, only if a .gitignore
-        already exists here and doesn't already cover it - never creates one
+      - Creates .claude/analytics/ (token-usage-report.ps1 -Html output) if it
+        doesn't already exist, and adds it to this repo's .gitignore, only if
+        a .gitignore already exists here and doesn't already cover it - never
+        creates a .gitignore that wasn't there before
 
     Skills, agents, schemas, and scripts are treated as "core" and always fully
     mirrored to match the pinned ref - not just overwritten by name, but kept
@@ -312,7 +314,11 @@ if (Test-Path $templateRoot) {
     Write-Warn "No project-template/ folder found in the source repo at ref '$Ref' - skipped."
 }
 
-# --- Ignore disposable analytics output, only if this repo already uses a .gitignore
+# --- Prepare .claude/analytics/, and ignore it if this repo already uses a .gitignore
+
+$analyticsDir = Join-Path $claudeDir "analytics"
+New-Item -ItemType Directory -Force -Path $analyticsDir | Out-Null
+Write-Ok "Ready: $analyticsDir (token-usage-report.ps1 -Html output)"
 
 $gitignorePath = ".gitignore"
 if (Test-Path $gitignorePath) {
