@@ -172,3 +172,37 @@ test("appendDecision assigns unique, sequential ids under concurrent calls", asy
 
   assert.deepEqual(seqs, Array.from({ length: 20 }, (_, i) => i + 1));
 });
+
+import { listDecisions } from "./tools.js";
+
+test("listDecisions with no filters returns all entries ordered by seq", async () => {
+  const { client } = await createTestDb();
+  await appendDecision(client, { date: "2026-09-11", story_id: "STORY-001", decision: "First" });
+  await appendDecision(client, { date: "2026-09-11", story_id: "STORY-002", decision: "Second" });
+
+  const decisions = await listDecisions(client);
+  assert.deepEqual(
+    decisions.map((d) => d.decision),
+    ["First", "Second"]
+  );
+});
+
+test("listDecisions filters by story_id", async () => {
+  const { client } = await createTestDb();
+  await appendDecision(client, { date: "2026-09-11", story_id: "STORY-001", decision: "For story 1" });
+  await appendDecision(client, { date: "2026-09-11", story_id: "STORY-002", decision: "For story 2" });
+
+  const decisions = await listDecisions(client, { story_id: "STORY-001" });
+  assert.equal(decisions.length, 1);
+  assert.equal(decisions[0].decision, "For story 1");
+});
+
+test("listDecisions respects limit", async () => {
+  const { client } = await createTestDb();
+  await appendDecision(client, { date: "2026-09-11", story_id: "STORY-001", decision: "A" });
+  await appendDecision(client, { date: "2026-09-11", story_id: "STORY-001", decision: "B" });
+  await appendDecision(client, { date: "2026-09-11", story_id: "STORY-001", decision: "C" });
+
+  const decisions = await listDecisions(client, { limit: 2 });
+  assert.equal(decisions.length, 2);
+});

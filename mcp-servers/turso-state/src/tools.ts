@@ -156,3 +156,48 @@ export async function appendDecision(client: Client, input: DecisionInput): Prom
     created_at: String(row.created_at),
   };
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function rowToDecision(row: any): Decision {
+  const seq = Number(row.seq);
+  return {
+    id: formatDecisionId(seq),
+    seq,
+    date: String(row.date),
+    story_id: String(row.story_id),
+    significance: String(row.significance) as Decision["significance"],
+    context: row.context ? String(row.context) : undefined,
+    decision: String(row.decision),
+    reasoning: row.reasoning ? String(row.reasoning) : undefined,
+    alternatives_considered: row.alternatives_considered
+      ? JSON.parse(String(row.alternatives_considered))
+      : undefined,
+    consequences: row.consequences ? String(row.consequences) : undefined,
+    tradeoffs: row.tradeoffs ? String(row.tradeoffs) : undefined,
+    created_at: String(row.created_at),
+  };
+}
+
+export async function listDecisions(
+  client: Client,
+  opts: { story_id?: string; since?: string; limit?: number } = {}
+): Promise<Decision[]> {
+  const conditions: string[] = [];
+  const args: unknown[] = [];
+  if (opts.story_id) {
+    conditions.push("story_id = ?");
+    args.push(opts.story_id);
+  }
+  if (opts.since) {
+    conditions.push("created_at >= ?");
+    args.push(opts.since);
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const limitClause = opts.limit ? `LIMIT ${Number(opts.limit)}` : "";
+  const result = await client.execute({
+    sql: `SELECT seq, date, story_id, significance, context, decision, reasoning, alternatives_considered, consequences, tradeoffs, created_at
+          FROM decisions ${where} ORDER BY seq ${limitClause}`,
+    args,
+  });
+  return result.rows.map(rowToDecision);
+}
