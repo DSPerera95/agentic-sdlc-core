@@ -97,3 +97,62 @@ export async function addStory(client: Client, story: Story): Promise<void> {
     ],
   });
 }
+
+export interface DecisionInput {
+  date: string;
+  story_id: string;
+  significance?: "architectural" | "routine";
+  context?: string;
+  decision: string;
+  reasoning?: string;
+  alternatives_considered?: string[];
+  consequences?: string;
+  tradeoffs?: string;
+}
+
+export interface Decision extends DecisionInput {
+  id: string;
+  seq: number;
+  significance: "architectural" | "routine";
+  created_at: string;
+}
+
+function formatDecisionId(seq: number): string {
+  return `DEC-${String(seq).padStart(4, "0")}`;
+}
+
+export async function appendDecision(client: Client, input: DecisionInput): Promise<Decision> {
+  const significance = input.significance ?? "routine";
+  const result = await client.execute({
+    sql: `INSERT INTO decisions (date, story_id, significance, context, decision, reasoning, alternatives_considered, consequences, tradeoffs)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          RETURNING seq, created_at`,
+    args: [
+      input.date,
+      input.story_id,
+      significance,
+      input.context ?? null,
+      input.decision,
+      input.reasoning ?? null,
+      input.alternatives_considered ? JSON.stringify(input.alternatives_considered) : null,
+      input.consequences ?? null,
+      input.tradeoffs ?? null,
+    ],
+  });
+  const row = result.rows[0];
+  const seq = Number(row.seq);
+  return {
+    id: formatDecisionId(seq),
+    seq,
+    date: input.date,
+    story_id: input.story_id,
+    significance,
+    context: input.context,
+    decision: input.decision,
+    reasoning: input.reasoning,
+    alternatives_considered: input.alternatives_considered,
+    consequences: input.consequences,
+    tradeoffs: input.tradeoffs,
+    created_at: String(row.created_at),
+  };
+}

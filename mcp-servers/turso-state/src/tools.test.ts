@@ -110,3 +110,65 @@ test("getBacklog returns multiple stories ordered by id", async () => {
     ["STORY-001", "STORY-002"]
   );
 });
+
+import { appendDecision } from "./tools.js";
+
+test("appendDecision assigns DEC-0001 to the first entry and defaults significance to routine", async () => {
+  const { client } = await createTestDb();
+  const decision = await appendDecision(client, {
+    date: "2026-09-11",
+    story_id: "STORY-001",
+    decision: "Use Turso for shared state",
+  });
+  assert.equal(decision.id, "DEC-0001");
+  assert.equal(decision.seq, 1);
+  assert.equal(decision.significance, "routine");
+});
+
+test("appendDecision assigns strictly increasing ids across sequential calls", async () => {
+  const { client } = await createTestDb();
+  const first = await appendDecision(client, {
+    date: "2026-09-11",
+    story_id: "STORY-001",
+    decision: "First decision",
+  });
+  const second = await appendDecision(client, {
+    date: "2026-09-11",
+    story_id: "STORY-002",
+    decision: "Second decision",
+  });
+  assert.equal(first.id, "DEC-0001");
+  assert.equal(second.id, "DEC-0002");
+});
+
+test("appendDecision preserves an explicit architectural significance and optional fields", async () => {
+  const { client } = await createTestDb();
+  const decision = await appendDecision(client, {
+    date: "2026-09-11",
+    story_id: "program",
+    significance: "architectural",
+    context: "Multiple engineers need shared state",
+    decision: "Adopt Turso-backed MCP server",
+    reasoning: "Solves the id-race condition at the storage layer",
+    alternatives_considered: ["custom REST API", "git-branch only"],
+    consequences: "New hosted dependency for opted-in projects",
+    tradeoffs: "Not zero-infrastructure anymore for those projects",
+  });
+  assert.equal(decision.significance, "architectural");
+  assert.equal(decision.reasoning, "Solves the id-race condition at the storage layer");
+  assert.deepEqual(decision.alternatives_considered, ["custom REST API", "git-branch only"]);
+});
+
+test("appendDecision assigns unique, sequential ids under concurrent calls", async () => {
+  const { client } = await createTestDb();
+  const inputs = Array.from({ length: 20 }, (_, i) => ({
+    date: "2026-09-11",
+    story_id: `STORY-${i}`,
+    decision: `Concurrent decision ${i}`,
+  }));
+
+  const results = await Promise.all(inputs.map((input) => appendDecision(client, input)));
+  const seqs = results.map((r) => r.seq).sort((a, b) => a - b);
+
+  assert.deepEqual(seqs, Array.from({ length: 20 }, (_, i) => i + 1));
+});
