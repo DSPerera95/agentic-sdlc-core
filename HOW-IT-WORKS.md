@@ -223,6 +223,14 @@ The guarantee that holds regardless of mode: **every story writes to the decisio
 
 Both amendment loops patch forward rather than restarting the story; the escalation doesn't restart anything either — it just widens what the rest of the run can see.
 
+### Sharing state across concurrent engineers (optional Turso backend)
+
+By default (`state_backend: file`), `story-backlog.json` and `decision-log.jsonl` are plain files, read and written directly - fine for one engineer, but each of several engineers' feature branches ends up with its own copy once more than one is running `feature-orchestrator` at the same time. `decision-log.jsonl`'s id assignment in particular is a real read-then-increment race under that concurrency, not just a merge inconvenience.
+
+Setting `state_backend: turso` in `orchestration.yaml` routes `story-backlog.json`/`decision-log.jsonl` reads and writes through `.claude/mcp-servers/turso-state/`, a local MCP server backed by a hosted Turso (libSQL) database instead. `decision-recorder`, `story-converter` (spec mode), and `feature-orchestrator` all branch on this setting internally - nothing else about how you invoke them changes. Everything under `stories_dir` stays a plain file in both modes; it was never the part of `.claude/state/` with a concurrency problem.
+
+This is opt-in and off by default - only turn it on once real concurrent-branch contention on this state is an actual, not hypothetical, problem for your team. See `docs/superpowers/specs/2026-09-11-turso-state-backend-design.md` in agentic-sdlc-core for the full design, including the export mechanism that keeps `rotate-decision-log.ps1`/`export-adrs.ps1` working unmodified against a `turso`-backed project.
+
 ### Updating a project's core version
 
 Re-run `install.ps1` with a new `-Ref`. Skills, agents, schemas, and scripts sync to the new version; your decision log is untouched. `orchestration.yaml` picks up any new top-level properties the new version added, with your existing values left exactly as they were - so a config addition like `stories_dir` (7.2.0) or `risk_thresholds` (7.1.0) actually reaches projects that installed before those existed, not just fresh installs.

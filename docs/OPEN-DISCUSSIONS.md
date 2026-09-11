@@ -18,6 +18,8 @@ Design constraints agreed on, not yet implemented:
 
 **Open question, unresolved:** does the org actually use one ticket system uniformly, or does it vary by team? If it varies, `story-converter` needs a defined fallback (narrate the ticket for a human to create manually) for projects with no MCP server configured, not an assumption that one always exists.
 
+**Resolved for internal state, as of 7.5.0**: the concurrent-branch state-sharing question (a different one from the ticket-system MCP integration above, but using the same mechanism) is addressed for teams that opt in - see `docs/superpowers/specs/2026-09-11-turso-state-backend-design.md` and the `7.5.0` `CHANGELOG.md` entry. The ticket-system MCP integration itself, and its open question about whether an org uses one ticket system uniformly, remain unbuilt and unresolved.
+
 ## Multi-repo workspace pattern
 
 Parked at the user's request — current system is single-repo only, deliberately.
