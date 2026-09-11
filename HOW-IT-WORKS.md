@@ -231,7 +231,7 @@ By default (`state_backend: file`), `story-backlog.json` and `decision-log.jsonl
 
 Setting `state_backend: turso` in `orchestration.yaml` routes `story-backlog.json`/`decision-log.jsonl` reads and writes through `.claude/mcp-servers/turso-state/`, a local MCP server backed by a hosted Turso (libSQL) database instead. `decision-recorder`, `story-converter` (spec mode), and `feature-orchestrator` all branch on this setting internally - nothing else about how you invoke them changes. Everything under `stories_dir` stays a plain file in both modes; it was never the part of `.claude/state/` with a concurrency problem.
 
-If `state_backend: turso` is already set when `install.ps1` runs, it fetches and sets up `turso-state` automatically via `.claude/scripts/setup-mcp-server.ps1 -Name turso-state`. If you switch `state_backend` to `turso` *after* already installing, run that same script directly instead of re-running the whole installer:
+`install.ps1` never reads `state_backend` or touches `.mcp.json` itself - installing the orchestrator and setting up an MCP server are two separate, deliberate steps, whether or not `state_backend: turso` was already set before you ran `install.ps1` for the first time. Once you've set it, run:
 
 ```powershell
 .claude\scripts\setup-mcp-server.ps1 -Name turso-state -EnvVars @{
@@ -240,7 +240,7 @@ If `state_backend: turso` is already set when `install.ps1` runs, it fetches and
 }
 ```
 
-It fetches `mcp-servers/turso-state/dist/` at whatever ref `.claude/agentic-sdlc-core.version` has pinned, runs `npm install` for its runtime-only dependencies, and registers it in `.mcp.json`. `TURSO_AUTH_TOKEN` is never written by either script - always sourced from each engineer's own local environment.
+This fetches `mcp-servers/turso-state/dist/` at whatever ref `.claude/agentic-sdlc-core.version` has pinned, runs `npm install` for its runtime-only dependencies, and registers it in `.mcp.json`. `TURSO_AUTH_TOKEN` is never written by this script - always sourced from each engineer's own local environment. Re-run it any time you need to pick up a newer build of `turso-state` from a newer core version, too - it always does a clean sync, never a merge with whatever was there before.
 
 This is opt-in and off by default - only turn it on once real concurrent-branch contention on this state is an actual, not hypothetical, problem for your team. See `docs/features/specs/2026-09-11-turso-state-backend-design.md` in agentic-sdlc-core for the full design, including the export mechanism that keeps `rotate-decision-log.ps1`/`export-adrs.ps1` working unmodified against a `turso`-backed project.
 

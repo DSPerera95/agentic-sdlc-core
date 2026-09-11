@@ -30,13 +30,15 @@
         doesn't already exist, and adds it to this repo's .gitignore, only if
         a .gitignore already exists here and doesn't already cover it - never
         creates a .gitignore that wasn't there before
-      - If orchestration.yaml has state_backend: turso, hands off to
-        .claude/scripts/setup-mcp-server.ps1 -Name turso-state to fetch,
-        npm-install, and register that MCP server. mcp-servers/ in the core
-        repo is otherwise NOT copied wholesale - only the specific server(s)
-        a project actually opts into get installed, via that same script
-        (which you can also run directly later, e.g. after switching
-        state_backend on post-install without re-running this whole installer).
+
+    This script only installs the orchestrator itself. It does not read
+    orchestration.yaml's state_backend or set up any MCP server - once you
+    set state_backend: turso (or add one later), run
+    .claude/scripts/setup-mcp-server.ps1 -Name <name> yourself. That script
+    is self-contained (reads the repo/ref to fetch from out of
+    .claude/agentic-sdlc-core.version, written below) and is the one path
+    for setting up an MCP server whether that happens during initial setup
+    or any time after.
 
     Skills, agents, schemas, and scripts are treated as "core" and always fully
     mirrored to match the pinned ref - not just overwritten by name, but kept
@@ -321,35 +323,6 @@ if (Test-Path $templateRoot) {
     Write-Warn "No project-template/ folder found in the source repo at ref '$Ref' - skipped."
 }
 
-# --- Register turso-state MCP server if this project has opted into state_backend: turso
-
-$orchestrationPath = Join-Path $claudeDir "config\orchestration.yaml"
-if (Test-Path $orchestrationPath) {
-    $orchestrationLines = [System.IO.File]::ReadAllLines((Resolve-Path $orchestrationPath), [System.Text.Encoding]::UTF8)
-    $stateBackendLine = $orchestrationLines | Where-Object { $_ -match '^\s*state_backend:\s*turso\s*$' }
-
-    if ($stateBackendLine) {
-        Write-Step "state_backend: turso detected - registering turso-state MCP server"
-
-        $dbUrlLine = $orchestrationLines | Where-Object { $_ -match '^\s*database_url:\s*(\S+)' } | Select-Object -First 1
-        $databaseUrl = if ($dbUrlLine) { ($dbUrlLine -replace '^\s*database_url:\s*', '').Trim() } else { "" }
-
-        if (-not $databaseUrl -or $databaseUrl -eq "libsql://<db-name>-<org>.turso.io") {
-            Write-Warn "turso.database_url is not set in $orchestrationPath - fill it in before this server will work."
-        }
-
-        $setupScript = Join-Path $claudeDir "scripts\setup-mcp-server.ps1"
-        if (-not (Test-Path $setupScript)) {
-            Write-Warn "$setupScript not found - skipping turso-state setup. Re-run install.ps1 (scripts/ should always be synced above)."
-        } else {
-            & $setupScript -Name "turso-state" -RepoUrl $RepoUrl -Ref $Ref -EnvVars @{
-                TURSO_DATABASE_URL = $databaseUrl
-                TURSO_AUTH_TOKEN   = "`${TURSO_AUTH_TOKEN}"
-            }
-        }
-    }
-}
-
 # --- Prepare .claude/analytics/, and ignore it if this repo already uses a .gitignore
 
 $analyticsDir = Join-Path $claudeDir "analytics"
@@ -378,4 +351,5 @@ Remove-Item -Recurse -Force $tempDir
 Write-Step "Done"
 Write-Info "Skills, agents, schemas, and scripts are synced to $Ref (commit $($commitSha.Substring(0, 8)))."
 Write-Info "Fill in $claudeDir\config\orchestration.yaml with this project's ticket system and context_mode default."
+Write-Info "If you set state_backend to something other than 'file' (e.g. turso), run $claudeDir\scripts\setup-mcp-server.ps1 -Name <name> to fetch and register that MCP server - install.ps1 does not do this for you."
 Write-Info "Commit the changes under $claudeDir to this repo's version control."
