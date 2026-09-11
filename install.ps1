@@ -30,6 +30,13 @@
         doesn't already exist, and adds it to this repo's .gitignore, only if
         a .gitignore already exists here and doesn't already cover it - never
         creates a .gitignore that wasn't there before
+      - If orchestration.yaml has state_backend: turso, hands off to
+        .claude/scripts/setup-mcp-server.ps1 -Name turso-state to fetch,
+        npm-install, and register that MCP server. mcp-servers/ in the core
+        repo is otherwise NOT copied wholesale - only the specific server(s)
+        a project actually opts into get installed, via that same script
+        (which you can also run directly later, e.g. after switching
+        state_backend on post-install without re-running this whole installer).
 
     Skills, agents, schemas, and scripts are treated as "core" and always fully
     mirrored to match the pinned ref - not just overwritten by name, but kept
@@ -215,12 +222,10 @@ $skillsSrc   = Join-Path $tempDir "skills"
 $agentsSrc   = Join-Path $tempDir "agents"
 $schemasSrc  = Join-Path $tempDir "schemas"
 $scriptsSrc  = Join-Path $tempDir "scripts"
-$mcpServersSrc  = Join-Path $tempDir "mcp-servers"
 $skillsDest  = Join-Path $claudeDir "skills"
 $agentsDest  = Join-Path $claudeDir "agents"
 $schemasDest = Join-Path $claudeDir "schemas"
 $scriptsDest = Join-Path $claudeDir "scripts"
-$mcpServersDest = Join-Path $claudeDir "mcp-servers"
 
 if (Test-Path $skillsSrc) {
     Write-Step "Installing skills -> $skillsDest"
@@ -262,16 +267,6 @@ if (Test-Path $scriptsSrc) {
     Write-Ok "Scripts installed"
 } else {
     Write-Warn "No scripts/ folder found in the source repo at ref '$Ref' - skipped."
-}
-
-if (Test-Path $mcpServersSrc) {
-    Write-Step "Installing mcp-servers -> $mcpServersDest"
-    New-Item -ItemType Directory -Force -Path $mcpServersDest | Out-Null
-    Copy-Item -Path "$mcpServersSrc\*" -Destination $mcpServersDest -Recurse -Force
-    Remove-StaleEntries -SourceDir $mcpServersSrc -DestDir $mcpServersDest -Label "mcp server"
-    Write-Ok "MCP servers installed"
-} else {
-    Write-Warn "No mcp-servers/ folder found in the source repo at ref '$Ref' - skipped."
 }
 
 # Record what's installed, so a re-run (or a teammate) can see the pinned version
@@ -343,33 +338,14 @@ if (Test-Path $orchestrationPath) {
             Write-Warn "turso.database_url is not set in $orchestrationPath - fill it in before this server will work."
         }
 
-        $mcpConfigPath = ".mcp.json"
-        $serverEntryPath = Join-Path $claudeDir "mcp-servers\turso-state\dist\index.js"
-
-        if (Test-Path $mcpConfigPath) {
-            $mcpConfig = Get-Content $mcpConfigPath -Raw | ConvertFrom-Json
+        $setupScript = Join-Path $claudeDir "scripts\setup-mcp-server.ps1"
+        if (-not (Test-Path $setupScript)) {
+            Write-Warn "$setupScript not found - skipping turso-state setup. Re-run install.ps1 (scripts/ should always be synced above)."
         } else {
-            $mcpConfig = [PSCustomObject]@{ mcpServers = [PSCustomObject]@{} }
-        }
-
-        if (-not $mcpConfig.mcpServers) {
-            $mcpConfig | Add-Member -MemberType NoteProperty -Name mcpServers -Value ([PSCustomObject]@{})
-        }
-
-        if ($mcpConfig.mcpServers.PSObject.Properties.Name -contains "turso-state") {
-            Write-Info "turso-state already registered in $mcpConfigPath - leaving existing entry untouched. Delete it first if you want this install to rewrite it."
-        } else {
-            $tursoEntry = [PSCustomObject]@{
-                command = "node"
-                args    = @($serverEntryPath)
-                env     = [PSCustomObject]@{
-                    TURSO_DATABASE_URL = $databaseUrl
-                    TURSO_AUTH_TOKEN   = "`${TURSO_AUTH_TOKEN}"
-                }
+            & $setupScript -Name "turso-state" -RepoUrl $RepoUrl -Ref $Ref -EnvVars @{
+                TURSO_DATABASE_URL = $databaseUrl
+                TURSO_AUTH_TOKEN   = "`${TURSO_AUTH_TOKEN}"
             }
-            $mcpConfig.mcpServers | Add-Member -MemberType NoteProperty -Name "turso-state" -Value $tursoEntry
-            ($mcpConfig | ConvertTo-Json -Depth 10) | Set-Content -Path $mcpConfigPath
-            Write-Ok "Registered turso-state MCP server in $mcpConfigPath"
         }
     }
 }
