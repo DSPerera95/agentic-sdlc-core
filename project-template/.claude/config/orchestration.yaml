@@ -37,3 +37,26 @@ stories_dir: .claude/state/stories
 decision_log_rotation:
   max_age_months: 6
   max_entries: 200
+
+# Where story-backlog.json and decision-log.jsonl are stored and accessed from.
+# 'file' (default): plain files under state_dir, read/written directly - zero
+# external dependencies, right for a solo engineer or a small team without
+# real concurrent-branch contention on this state.
+# 'turso': routes story-backlog/decision-log reads and writes through a local
+# MCP server (.claude/mcp-servers/turso-state/) backed by a hosted Turso
+# database - opt into this once multiple engineers are running
+# feature-orchestrator concurrently on separate branches against the same
+# backlog/decision log. Only story-backlog.json and decision-log.jsonl move
+# to Turso in this mode - everything under stories_dir stays plain files
+# either way. See agentic-sdlc-core's
+# docs/superpowers/specs/2026-09-11-turso-state-backend-design.md for the
+# full design.
+state_backend: file   # file | turso
+
+# Only read when state_backend is turso. The database URL is an identifier,
+# not a secret - safe to commit. The auth token is NEVER stored here; it
+# comes from the TURSO_AUTH_TOKEN environment variable, set locally by each
+# engineer from their own scoped Turso token. install.ps1 never touches
+# credentials.
+turso:
+  database_url: libsql://<db-name>-<org>.turso.io

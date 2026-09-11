@@ -215,10 +215,12 @@ $skillsSrc   = Join-Path $tempDir "skills"
 $agentsSrc   = Join-Path $tempDir "agents"
 $schemasSrc  = Join-Path $tempDir "schemas"
 $scriptsSrc  = Join-Path $tempDir "scripts"
+$mcpServersSrc  = Join-Path $tempDir "mcp-servers"
 $skillsDest  = Join-Path $claudeDir "skills"
 $agentsDest  = Join-Path $claudeDir "agents"
 $schemasDest = Join-Path $claudeDir "schemas"
 $scriptsDest = Join-Path $claudeDir "scripts"
+$mcpServersDest = Join-Path $claudeDir "mcp-servers"
 
 if (Test-Path $skillsSrc) {
     Write-Step "Installing skills -> $skillsDest"
@@ -260,6 +262,16 @@ if (Test-Path $scriptsSrc) {
     Write-Ok "Scripts installed"
 } else {
     Write-Warn "No scripts/ folder found in the source repo at ref '$Ref' - skipped."
+}
+
+if (Test-Path $mcpServersSrc) {
+    Write-Step "Installing mcp-servers -> $mcpServersDest"
+    New-Item -ItemType Directory -Force -Path $mcpServersDest | Out-Null
+    Copy-Item -Path "$mcpServersSrc\*" -Destination $mcpServersDest -Recurse -Force
+    Remove-StaleEntries -SourceDir $mcpServersSrc -DestDir $mcpServersDest -Label "mcp server"
+    Write-Ok "MCP servers installed"
+} else {
+    Write-Warn "No mcp-servers/ folder found in the source repo at ref '$Ref' - skipped."
 }
 
 # Record what's installed, so a re-run (or a teammate) can see the pinned version
@@ -312,6 +324,54 @@ if (Test-Path $templateRoot) {
     Install-TemplateFile "state\stories\README.md"
 } else {
     Write-Warn "No project-template/ folder found in the source repo at ref '$Ref' - skipped."
+}
+
+# --- Register turso-state MCP server if this project has opted into state_backend: turso
+
+$orchestrationPath = Join-Path $claudeDir "config\orchestration.yaml"
+if (Test-Path $orchestrationPath) {
+    $orchestrationLines = [System.IO.File]::ReadAllLines((Resolve-Path $orchestrationPath), [System.Text.Encoding]::UTF8)
+    $stateBackendLine = $orchestrationLines | Where-Object { $_ -match '^\s*state_backend:\s*turso\s*$' }
+
+    if ($stateBackendLine) {
+        Write-Step "state_backend: turso detected - registering turso-state MCP server"
+
+        $dbUrlLine = $orchestrationLines | Where-Object { $_ -match '^\s*database_url:\s*(\S+)' } | Select-Object -First 1
+        $databaseUrl = if ($dbUrlLine) { ($dbUrlLine -replace '^\s*database_url:\s*', '').Trim() } else { "" }
+
+        if (-not $databaseUrl -or $databaseUrl -eq "libsql://<db-name>-<org>.turso.io") {
+            Write-Warn "turso.database_url is not set in $orchestrationPath - fill it in before this server will work."
+        }
+
+        $mcpConfigPath = ".mcp.json"
+        $serverEntryPath = Join-Path $claudeDir "mcp-servers\turso-state\dist\index.js"
+
+        if (Test-Path $mcpConfigPath) {
+            $mcpConfig = Get-Content $mcpConfigPath -Raw | ConvertFrom-Json
+        } else {
+            $mcpConfig = [PSCustomObject]@{ mcpServers = [PSCustomObject]@{} }
+        }
+
+        if (-not $mcpConfig.mcpServers) {
+            $mcpConfig | Add-Member -MemberType NoteProperty -Name mcpServers -Value ([PSCustomObject]@{})
+        }
+
+        if ($mcpConfig.mcpServers.PSObject.Properties.Name -contains "turso-state") {
+            Write-Info "turso-state already registered in $mcpConfigPath - leaving existing entry untouched. Delete it first if you want this install to rewrite it."
+        } else {
+            $tursoEntry = [PSCustomObject]@{
+                command = "node"
+                args    = @($serverEntryPath)
+                env     = [PSCustomObject]@{
+                    TURSO_DATABASE_URL = $databaseUrl
+                    TURSO_AUTH_TOKEN   = "`${TURSO_AUTH_TOKEN}"
+                }
+            }
+            $mcpConfig.mcpServers | Add-Member -MemberType NoteProperty -Name "turso-state" -Value $tursoEntry
+            ($mcpConfig | ConvertTo-Json -Depth 10) | Set-Content -Path $mcpConfigPath
+            Write-Ok "Registered turso-state MCP server in $mcpConfigPath"
+        }
+    }
 }
 
 # --- Prepare .claude/analytics/, and ignore it if this repo already uses a .gitignore
