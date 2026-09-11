@@ -18,11 +18,15 @@ Convert the approved program-level spec into:
 
 Create one ticket per story in the configured ticket system, and return the resulting ticket id on each story entry. Do not generate technical tasks or subtasks in this mode. No implementation plan exists yet for any story, so there's nothing to decompose into tasks — a story's ticket stays at the acceptance-criteria level until something during implementation gives reason to update it.
 
-For each story, create its directory at `<stories_dir>/<story-id>-<slug>/` (you choose the slug, from the story's title) and write `ticket.json` there: the story's `ticket_id` plus an empty sync log. `stories_dir` is given to you explicitly by whoever invoked you - you have no project config access of your own.
+For each story, create its directory at `<stories_dir>/<story-id>-<slug>/` (you choose the slug, from the story's title) and write `ticket.json` there: the story's `ticket_id` plus an empty sync log. `stories_dir` is given to you explicitly by whoever invoked you - you have no project config access of your own. This step is unaffected by `state_backend` — `ticket.json` always lives under `stories_dir` as a plain file, in both modes.
 
-Write the whole backlog — `project`, `program_spec_ref`, `architecture_mode`, and the `stories` array with every field set above — to `.claude/state/story-backlog.json`, matching `story-backlog.schema.json` exactly: a single JSON object, not JSON Lines. This is written once per project (or once per project-scoper re-run against an already-scoped project), not appended to incrementally the way `decision-log.jsonl` is, so there's no per-line benefit here — one whole-document write is the right shape, and the `.json` extension says so honestly.
+Write the whole backlog — `project`, `program_spec_ref`, `architecture_mode`, and the `stories` array with every field set above. Where depends on this project's `state_backend`, given to you explicitly by whoever invoked you (you have no project config access of your own):
+- `file` (default): to `.claude/state/story-backlog.json`, matching `story-backlog.schema.json` exactly: a single JSON object, not JSON Lines. Written once per project (or once per project-scoper re-run against an already-scoped project), not appended to incrementally the way `decision-log.jsonl` is.
+- `turso`: call `set_backlog_meta` once with `project`/`program_spec_ref`/`architecture_mode`, then `add_story` once per story with that story's fields. `add_story` errors if a story `id` you pass already exists — treat that the same as the file-mode duplicate-id check below, not as a transient failure to retry past.
 
-If `.claude/state/story-backlog.json` already exists, read it first: never assign a story id already in use, and never recreate a ticket for a story that's already there.
+If checking for an already-scoped project (this run is a `project-scoper` re-run):
+- `file` mode: if `.claude/state/story-backlog.json` already exists, read it first: never assign a story id already in use, and never recreate a ticket for a story that's already there.
+- `turso` mode: call `get_backlog` first for the same reason - never assign a story id `get_backlog` already returned, and never recreate a ticket for a story it already lists.
 
 This file is a point-in-time snapshot of what spec mode produced, not a live mirror of ticket state — plan mode (below) updates the ticket, never this file. The ticket system is the system of record for anything that changes after spec-mode creation; this file exists so `risk-classifier`, `feature-orchestrator`, and a later `project-scoper` re-run can read the backlog structure locally without paging through the ticket system's API for it.
 
