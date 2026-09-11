@@ -17,6 +17,7 @@ A reusable multi-agent orchestration layer for AI-assisted software development,
   - `export-adrs.ps1` — renders `significance: architectural` log entries as individual ADR files in `docs/adr/`. A projection of the log, never a second source of truth.
   - `token-usage-report.ps1` — reads the Claude Code session transcript and renders a terminal bar chart of token usage per agent (exact) and per skill (best-effort heuristic). Works against a still-running session, not just a finished one. `-Html` writes a presentable, colored version to `.claude/analytics/` for sharing with a non-technical audience.
 - **`project-template/`** — the `.claude/` skeleton to copy into a new project that will use this core.
+- **`mcp-servers/turso-state/`** — an optional local MCP server (Node/TypeScript), backed by a hosted Turso database, that a project can opt into via `orchestration.yaml`'s `state_backend: turso` setting to share `story-backlog.json`/`decision-log.jsonl` across multiple engineers' concurrent feature branches instead of each branch carrying its own file copy. Off by default; `file` mode (plain files, no external dependency) is unaffected either way.
 
 ## How the pieces fit together
 
@@ -55,6 +56,8 @@ Run `install.ps1` from the root of the target project repo:
 This clones agentic-sdlc-core at the pinned ref (a tag, branch, or commit), installs all skills into `.claude/skills/`, all agents into `.claude/agents/`, the schemas into `.claude/schemas/`, and both maintenance scripts into `.claude/scripts/`, records what's installed in `.claude/agentic-sdlc-core.version`, and scaffolds `.claude/CLAUDE.md`, `.claude/config/orchestration.yaml`, and `.claude/state/` from `project-template/` — but only creates files that don't already exist, so re-running it is safe and never clobbers a project's own config or decision log. `orchestration.yaml` gets one exception: if it already exists, any top-level property the new version added but yours is missing gets appended (comments included) rather than skipped entirely, so config additions in a newer core version still reach a project that installed before they existed.
 
 Fill in `.claude/config/orchestration.yaml` for that project afterward — ticket system, `context_mode_default`, risk thresholds, `stories_dir`. See `project-template/.claude/config/orchestration.yaml` for the format.
+
+If multiple engineers will run `feature-orchestrator` concurrently on separate branches against the same backlog, consider `state_backend: turso` in that same config file instead of the `file` default - see `mcp-servers/turso-state/` above and this repo's design spec (`docs/features/specs/2026-09-11-turso-state-backend-design.md`) for what that changes and what it doesn't.
 
 **To update a project to a newer core version**, re-run with a new `-Ref`:
 

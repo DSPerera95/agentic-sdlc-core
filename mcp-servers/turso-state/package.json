@@ -1,0 +1,28 @@
+{
+  "name": "turso-state-mcp-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "node --import tsx --test src/db.test.ts src/tools.test.ts src/server.test.ts src/export.test.ts",
+    "start": "node dist/index.js",
+    "export": "node --import tsx src/export.ts"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.14.0",
+    "@modelcontextprotocol/sdk": "^1.5.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.4"
+  }
+}
