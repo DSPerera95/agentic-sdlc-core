@@ -229,7 +229,7 @@ By default (`state_backend: file`), `story-backlog.json` and `decision-log.jsonl
 
 Setting `state_backend: turso` in `orchestration.yaml` routes `story-backlog.json`/`decision-log.jsonl` reads and writes through `.claude/mcp-servers/turso-state/`, a local MCP server backed by a hosted Turso (libSQL) database instead. `decision-recorder`, `story-converter` (spec mode), and `feature-orchestrator` all branch on this setting internally - nothing else about how you invoke them changes. Everything under `stories_dir` stays a plain file in both modes; it was never the part of `.claude/state/` with a concurrency problem.
 
-This is opt-in and off by default - only turn it on once real concurrent-branch contention on this state is an actual, not hypothetical, problem for your team. See `docs/superpowers/specs/2026-09-11-turso-state-backend-design.md` in agentic-sdlc-core for the full design, including the export mechanism that keeps `rotate-decision-log.ps1`/`export-adrs.ps1` working unmodified against a `turso`-backed project.
+This is opt-in and off by default - only turn it on once real concurrent-branch contention on this state is an actual, not hypothetical, problem for your team. See `docs/features/specs/2026-09-11-turso-state-backend-design.md` in agentic-sdlc-core for the full design, including the export mechanism that keeps `rotate-decision-log.ps1`/`export-adrs.ps1` working unmodified against a `turso`-backed project.
 
 ### Updating a project's core version
 

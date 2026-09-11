@@ -8,7 +8,7 @@
 
 **Tech Stack:** Node.js (>=20) + TypeScript, `@modelcontextprotocol/sdk`, `@libsql/client`, `zod`, Node's built-in `node:test` runner, `ajv` for schema validation in tests. PowerShell for `install.ps1` changes only.
 
-**Reference spec:** `docs/superpowers/specs/2026-09-11-turso-state-backend-design.md`
+**Reference spec:** `docs/features/specs/2026-09-11-turso-state-backend-design.md`
 
 ## Global Constraints
 
@@ -1263,7 +1263,7 @@ Append to `project-template/.claude/config/orchestration.yaml`:
 # backlog/decision log. Only story-backlog.json and decision-log.jsonl move
 # to Turso in this mode - everything under stories_dir stays plain files
 # either way. See agentic-sdlc-core's
-# docs/superpowers/specs/2026-09-11-turso-state-backend-design.md for the
+# docs/features/specs/2026-09-11-turso-state-backend-design.md for the
 # full design.
 state_backend: file   # file | turso
 
@@ -1531,7 +1531,7 @@ Insert at the top of `CHANGELOG.md`, immediately after the `# Changelog` heading
 - New `mcp-servers/turso-state/export.ts` script regenerates `story-backlog.json`/`decision-log.jsonl` from the live Turso tables onto a dedicated `claude-state-export` git branch, on demand - keeps `scripts/rotate-decision-log.ps1` and `scripts/export-adrs.ps1` working completely unmodified against a `turso`-backed project. Rotation in this mode is now purely a file-readability convenience, not a retention operation - Turso retains every row indefinitely.
 - `install.ps1` now always installs `mcp-servers/turso-state/` (mirrored via the existing `Remove-StaleEntries` mechanism, same as `skills`/`agents`/`schemas`/`scripts`), and additionally registers it in the project's `.mcp.json` when `state_backend: turso` is already set at install time. `install.ps1` never writes or generates Turso credentials - `TURSO_AUTH_TOKEN` is set locally by each engineer from a scoped token, per the same constraint already agreed for the ticket-system MCP integration.
 
-**Why**: real design discussion (see `docs/superpowers/specs/2026-09-11-turso-state-backend-design.md`) about a genuine target environment for this tool - a monorepo with several engineers, each running `feature-orchestrator` on their own feature branch off a backlog a tech lead produced once. `story-backlog.json` and `decision-log.jsonl` living inside whatever branch a session happens to be on doesn't hold up under that concurrency: `decision-log`'s id assignment has a real read-then-increment race today, and `story-backlog.json` (write-once, no status field - the ticket system is the system of record for anything that changes after creation) gives every engineer's branch a possibly-stale local copy. Considered a custom-hosted REST API and a git-native dedicated-branch-only approach first; rejected both - the former means operating your own database and auth from scratch, the latter still doesn't remove the id-race condition, since "highest id in the file" is read-then-increment even on a branch nobody's feature work touches. A hosted libSQL database gives atomic sequential ids and real transactional writes for free, and a local/stdio MCP server means no one has to host anything beyond the database itself. Kept strictly opt-in, matching this repo's "narrow default, cheap escalation" pattern already used for `context_mode` and `depends_on` - a solo engineer or small team never has to know this exists.
+**Why**: real design discussion (see `docs/features/specs/2026-09-11-turso-state-backend-design.md`) about a genuine target environment for this tool - a monorepo with several engineers, each running `feature-orchestrator` on their own feature branch off a backlog a tech lead produced once. `story-backlog.json` and `decision-log.jsonl` living inside whatever branch a session happens to be on doesn't hold up under that concurrency: `decision-log`'s id assignment has a real read-then-increment race today, and `story-backlog.json` (write-once, no status field - the ticket system is the system of record for anything that changes after creation) gives every engineer's branch a possibly-stale local copy. Considered a custom-hosted REST API and a git-native dedicated-branch-only approach first; rejected both - the former means operating your own database and auth from scratch, the latter still doesn't remove the id-race condition, since "highest id in the file" is read-then-increment even on a branch nobody's feature work touches. A hosted libSQL database gives atomic sequential ids and real transactional writes for free, and a local/stdio MCP server means no one has to host anything beyond the database itself. Kept strictly opt-in, matching this repo's "narrow default, cheap escalation" pattern already used for `context_mode` and `depends_on` - a solo engineer or small team never has to know this exists.
 ```
 
 - [ ] **Step 3: Add a bullet to README.md's "What's in here" list**
@@ -1547,7 +1547,7 @@ In `README.md`, after the `- **`project-template/`** — ...` bullet (line 19), 
 In `README.md`, after the paragraph ending "...See `project-template/.claude/config/orchestration.yaml` for the format." (line 57), add:
 
 ```markdown
-If multiple engineers will run `feature-orchestrator` concurrently on separate branches against the same backlog, consider `state_backend: turso` in that same config file instead of the `file` default - see `mcp-servers/turso-state/` above and this repo's design spec (`docs/superpowers/specs/2026-09-11-turso-state-backend-design.md`) for what that changes and what it doesn't.
+If multiple engineers will run `feature-orchestrator` concurrently on separate branches against the same backlog, consider `state_backend: turso` in that same config file instead of the `file` default - see `mcp-servers/turso-state/` above and this repo's design spec (`docs/features/specs/2026-09-11-turso-state-backend-design.md`) for what that changes and what it doesn't.
 ```
 
 - [ ] **Step 5: Add a HOW-IT-WORKS.md subsection**
@@ -1561,7 +1561,7 @@ By default (`state_backend: file`), `story-backlog.json` and `decision-log.jsonl
 
 Setting `state_backend: turso` in `orchestration.yaml` routes `story-backlog.json`/`decision-log.jsonl` reads and writes through `.claude/mcp-servers/turso-state/`, a local MCP server backed by a hosted Turso (libSQL) database instead. `decision-recorder`, `story-converter` (spec mode), and `feature-orchestrator` all branch on this setting internally - nothing else about how you invoke them changes. Everything under `stories_dir` stays a plain file in both modes; it was never the part of `.claude/state/` with a concurrency problem.
 
-This is opt-in and off by default - only turn it on once real concurrent-branch contention on this state is an actual, not hypothetical, problem for your team. See `docs/superpowers/specs/2026-09-11-turso-state-backend-design.md` in agentic-sdlc-core for the full design, including the export mechanism that keeps `rotate-decision-log.ps1`/`export-adrs.ps1` working unmodified against a `turso`-backed project.
+This is opt-in and off by default - only turn it on once real concurrent-branch contention on this state is an actual, not hypothetical, problem for your team. See `docs/features/specs/2026-09-11-turso-state-backend-design.md` in agentic-sdlc-core for the full design, including the export mechanism that keeps `rotate-decision-log.ps1`/`export-adrs.ps1` working unmodified against a `turso`-backed project.
 ```
 
 - [ ] **Step 6: Add a resolution note to docs/OPEN-DISCUSSIONS.md**
@@ -1569,7 +1569,7 @@ This is opt-in and off by default - only turn it on once real concurrent-branch 
 In `docs/OPEN-DISCUSSIONS.md`, at the end of the "MCP tool integration for skills/agents" section, add:
 
 ```markdown
-**Resolved for internal state, as of 7.5.0**: the concurrent-branch state-sharing question (a different one from the ticket-system MCP integration above, but using the same mechanism) is addressed for teams that opt in - see `docs/superpowers/specs/2026-09-11-turso-state-backend-design.md` and the `7.5.0` `CHANGELOG.md` entry. The ticket-system MCP integration itself, and its open question about whether an org uses one ticket system uniformly, remain unbuilt and unresolved.
+**Resolved for internal state, as of 7.5.0**: the concurrent-branch state-sharing question (a different one from the ticket-system MCP integration above, but using the same mechanism) is addressed for teams that opt in - see `docs/features/specs/2026-09-11-turso-state-backend-design.md` and the `7.5.0` `CHANGELOG.md` entry. The ticket-system MCP integration itself, and its open question about whether an org uses one ticket system uniformly, remain unbuilt and unresolved.
 ```
 
 - [ ] **Step 7: Commit**

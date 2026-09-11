@@ -57,7 +57,7 @@ This clones agentic-sdlc-core at the pinned ref (a tag, branch, or commit), inst
 
 Fill in `.claude/config/orchestration.yaml` for that project afterward — ticket system, `context_mode_default`, risk thresholds, `stories_dir`. See `project-template/.claude/config/orchestration.yaml` for the format.
 
-If multiple engineers will run `feature-orchestrator` concurrently on separate branches against the same backlog, consider `state_backend: turso` in that same config file instead of the `file` default - see `mcp-servers/turso-state/` above and this repo's design spec (`docs/superpowers/specs/2026-09-11-turso-state-backend-design.md`) for what that changes and what it doesn't.
+If multiple engineers will run `feature-orchestrator` concurrently on separate branches against the same backlog, consider `state_backend: turso` in that same config file instead of the `file` default - see `mcp-servers/turso-state/` above and this repo's design spec (`docs/features/specs/2026-09-11-turso-state-backend-design.md`) for what that changes and what it doesn't.
 
 **To update a project to a newer core version**, re-run with a new `-Ref`:
 

@@ -49,7 +49,7 @@ decision_log_rotation:
 # backlog/decision log. Only story-backlog.json and decision-log.jsonl move
 # to Turso in this mode - everything under stories_dir stays plain files
 # either way. See agentic-sdlc-core's
-# docs/superpowers/specs/2026-09-11-turso-state-backend-design.md for the
+# docs/features/specs/2026-09-11-turso-state-backend-design.md for the
 # full design.
 state_backend: file   # file | turso
 
