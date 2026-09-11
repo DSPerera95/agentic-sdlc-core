@@ -183,7 +183,7 @@ export async function listDecisions(
   opts: { story_id?: string; since?: string; limit?: number } = {}
 ): Promise<Decision[]> {
   const conditions: string[] = [];
-  const args: unknown[] = [];
+  const args: string[] = [];
   if (opts.story_id) {
     conditions.push("story_id = ?");
     args.push(opts.story_id);
