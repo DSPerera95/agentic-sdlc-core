@@ -8,8 +8,9 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node copy-dist-assets.mjs",
     "test": "node --import tsx --test src/db.test.ts src/tools.test.ts src/server.test.ts src/export.test.ts",
+    "test:dist": "npm run build && node dist-smoke-test.mjs",
     "start": "node dist/index.js",
     "export": "node --import tsx src/export.ts"
   },
