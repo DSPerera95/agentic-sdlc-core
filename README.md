@@ -5,7 +5,7 @@ A reusable multi-agent orchestration layer for AI-assisted software development,
 ## What's in here
 
 - **`skills/`** — 9 skills that run inline in the calling session:
-  - **Program planning** (`project-planner`) — turns a PRD or an existing repo into an approved story backlog, run once per project.
+  - **Program planning** (`project-planner`) — turns a PRD or an existing repo into an approved story backlog, run once per project. In architecture mode, also challenges architectural decisions during grilling and proposes/generates C4 and other architecture diagrams as Mermaid files.
   - **Story execution** (`feature-orchestrator` and everything else it calls) — runs once per story, often by a different engineer, producing spec → plan → implementation → validation for that story alone.
 - **`agents/`** — 5 fixed-identity subagents, always isolated, always on a pinned model, invoked by `feature-orchestrator`/`project-planner` rather than run inline: `risk-classifier`, `story-converter`, `validator`, `implementer`, `bug-fixer`. `decision-recorder` deliberately isn't one of these — it's invoked at least three times per story plus every amendment, the highest frequency of anything here, and it's capturing reasoning that just happened in the calling session, so isolating it would mean re-explaining that reasoning rather than saving anything.
 - **`schemas/`** — the data contracts that let these hand off to each other and to external tools (a ticketing system, a dashboard) without ambiguity:
