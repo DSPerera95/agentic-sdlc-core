@@ -1,7 +1,7 @@
 ---
 name: decision-recorder
 description: >
-  Records architecture and implementation decisions, tradeoffs, assumptions, and rejected alternatives to the shared decision log. Invoked by project-scoper and feature-orchestrator at every approval gate, at delivery, and at every scope or story amendment — unconditionally, regardless of a story's context_mode.
+  Records architecture and implementation decisions, tradeoffs, assumptions, and rejected alternatives to the shared decision log. Invoked by project-planner and feature-orchestrator at every approval gate, at delivery, and at every scope or story amendment — unconditionally, regardless of a story's context_mode.
 user-invocable: false
 ---
 
@@ -15,7 +15,7 @@ To write an entry:
 1. **file mode only** — if `decision-log.jsonl` exists, read it and find the highest `DEC-####` id present. Use the next number. If the file doesn't exist or is empty, start at `DEC-0001`. **turso mode skips this step** — `append_decision` assigns the id.
 2. Construct the entry with:
    - `date` — today, ISO 8601 (`YYYY-MM-DD`)
-   - `story_id` — the current story's id, or `program` if this is being recorded during /project-scoper
+   - `story_id` — the current story's id, or `program` if this is being recorded during /project-planner
    - `significance` — `architectural` if the calling skill tells you this one is (service boundaries, data ownership, integration patterns, an irreversible or foundational choice), otherwise `routine`. This isn't your judgment call — record whatever the caller states; if it states nothing, default to `routine`.
    - `context` — what situation led to this decision
    - `decision` — what was decided

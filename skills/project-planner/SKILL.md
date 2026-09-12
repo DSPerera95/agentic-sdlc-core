@@ -1,11 +1,11 @@
 ---
-name: project-scoper
+name: project-planner
 description: >
-  Entry point for scoping a new project or engagement from a PRD, requirements document, or an existing repository. Analyzes the input, runs a scope-defining grill-me session (or a deeper architecture-mode session, if requested), produces a program-level spec, and converts it into an initial story backlog. Use at project kickoff, before any individual feature work begins — for greenfield projects with a PRD/requirements doc, or brownfield projects with an existing repo that needs scoping.
+  Entry point for planning a new project or engagement from a PRD, requirements document, or an existing repository. Analyzes the input, runs a project-level grill-me session (or a deeper architecture-mode session, if requested), produces a program-level spec, and converts it into an initial story backlog. Use at project kickoff, before any individual feature work begins — for greenfield projects with a PRD/requirements doc, or brownfield projects with an existing repo that needs planning.
 user-invocable: true
 ---
 
-# Program-level scoping
+# Program-level planning
 
 Runs once per project or engagement, before any story-level work begins. Produces the story backlog that individual /feature-orchestrator runs will later pick up one at a time, often by different engineers.
 
@@ -13,7 +13,7 @@ The story-converter agent (Phase 5) is a fixed-identity subagent, not a skill �
 
 ## Architecture mode
 
-Off by default. Turn it on only when explicitly requested at invocation (e.g. "greenfield, use architecture mode") — this skill doesn't infer it from the PRD or from what /repo-discovery finds. When on, it changes Phase 2 and Phase 3 below, and nothing else; /grill-me and /spec-writer themselves are unchanged, since the constraint that normally keeps them scope-level lives entirely in how this skill instructs them, not in either of their own files.
+Off by default. Turn it on only when explicitly requested at invocation (e.g. "greenfield, use architecture mode") — this skill doesn't infer it from the PRD or from what /repo-discovery finds. When on, it changes Phase 2 and Phase 3 below, and nothing else; /grill-me and /spec-writer themselves are unchanged, since the constraint that normally keeps them project-level lives entirely in how this skill instructs them, not in either of their own files.
 
 ## Phase 1 — Understand the starting point
 
@@ -23,7 +23,7 @@ Off by default. Turn it on only when explicitly requested at invocation (e.g. "g
 
 ## Phase 2 — Define scope
 
-**Architecture mode off (default):** invoke /grill-me, scope-defining rather than feature-defining — resolve ambiguity about what's in scope, what's explicitly out of scope, target users, constraints, and priorities for the engagement as a whole, not implementation detail for any single feature.
+**Architecture mode off (default):** invoke /grill-me, project-level rather than feature-level — resolve ambiguity about what's in scope, what's explicitly out of scope, target users, constraints, and priorities for the engagement as a whole, not implementation detail for any single feature.
 
 **Architecture mode on:** invoke /grill-me with the opposite instruction — go deep. Service boundaries, data ownership, integration patterns, and other decisions that can't safely be deferred to individual stories without risking one story's implementation conflicting with a boundary an earlier story assumed. This is real design work, not scope clarification; let it take as many questions as it needs.
 
@@ -38,9 +38,9 @@ STOP. Wait for user answers before proceeding.
 STOP. Present spec. Ask: "Approve program spec? (yes / feedback)"
 Do not proceed until approved.
 
-## Phase 4 — Record scoping decisions
+## Phase 4 — Record planning decisions
 
-Invoke /decision-recorder to capture the scope decisions made in Phases 2-3. This becomes the shared reference every story can draw on later, regardless of any individual story's `context_mode`. If architecture mode was on for this run, also record that fact and why, tagged `significance: architectural`.
+Invoke /decision-recorder to capture the planning decisions made in Phases 2-3. This becomes the shared reference every story can draw on later, regardless of any individual story's `context_mode`. If architecture mode was on for this run, also record that fact and why, tagged `significance: architectural`.
 
 ## Phase 5 — Story backlog
 
@@ -57,8 +57,8 @@ STOP. Present the story backlog with each story's `context_mode`. Ask: "Approve 
 
 ## Guardrails
 
-- Never generate implementation-level tasks, file lists, or technical plans here — that's /implementation-planner's job, once per story, later. This holds even in architecture mode: deeper design detail in the spec is not the same thing as a task breakdown.
+- Never generate implementation-level tasks, file lists, or technical plans here — that's /plan-writer's job, once per story, later. This holds even in architecture mode: deeper design detail in the spec is not the same thing as a task breakdown.
 - Never skip Phase 2 even if a PRD looks complete — written requirements from a client still need a clarification pass.
 - If the repo (brownfield) reveals a hard architectural constraint that conflicts with the PRD, surface it before writing the spec rather than writing around it silently.
 - Never turn architecture mode on unrequested, and never silently skip it when it was explicitly requested — it's an explicit choice made once at invocation, not something to infer or second-guess mid-run.
-- This skill produces the backlog; it does not execute any story. Hand each approved story off to /feature-orchestrator as an independent run — except a story with a non-empty `depends_on`, which shouldn't be handed off until every story it depends on has actually merged, not just started. `depends_on` is meaningless if nothing checks it. It should also be rare: story-converter only sets it for genuine contract dependencies, not for stories that would merely benefit from awareness of each other — that case is handled by context escalation inside each story's own run, not by blocking at scoping time.
+- This skill produces the backlog; it does not execute any story. Hand each approved story off to /feature-orchestrator as an independent run — except a story with a non-empty `depends_on`, which shouldn't be handed off until every story it depends on has actually merged, not just started. `depends_on` is meaningless if nothing checks it. It should also be rare: story-converter only sets it for genuine contract dependencies, not for stories that would merely benefit from awareness of each other — that case is handled by context escalation inside each story's own run, not by blocking at planning time.

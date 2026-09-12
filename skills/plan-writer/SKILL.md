@@ -1,5 +1,5 @@
 ---
-name: implementation-planner
+name: plan-writer
 description: >
   Converts an approved feature specification into a deterministic implementation plan: a task graph with explicit dependencies, file ownership, and parallel-safe groupings, plus testing strategy and rollout guidance.
 user-invocable: false
@@ -24,7 +24,7 @@ Also generate:
 
 ## Parallel-safety rule
 
-Two tasks may share a `parallel_group` only if their `files_touched` sets are fully disjoint. If two tasks are logically independent but touch the same file (or the same class, migration, or shared interface), keep them sequential — same `depends_on` chain, different `parallel_group` values (or `null`) — rather than marking them parallel. File-level collisions matter more than logical independence: a planner that only reasons about logical dependency will hand the orchestrator a task graph that causes implementers to collide.
+Two tasks may share a `parallel_group` only if their `files_touched` sets are fully disjoint. If two tasks are logically independent but touch the same file (or the same class, migration, or shared interface), keep them sequential — same `depends_on` chain, different `parallel_group` values (or `null`) — rather than marking them parallel. File-level collisions matter more than logical independence: reasoning only about logical dependency will produce a task graph that causes implementers to collide.
 
 Prefer:
 - incremental implementation

@@ -33,7 +33,7 @@ What would actually need to change, not just get configured:
 - `repo-discovery` currently does one broad pass over one repo — multi-repo needs it to either sweep all of them or know from a manifest which are relevant to a given story.
 - A single story could require multiple PRs (one per touched repo, plus the orchestration plane's own state PR) instead of one — real added coordination cost, not just a config change.
 
-**Open question, unresolved:** should `orchestration.yaml` re-list the repos at all, or should `project-scoper`/`repo-discovery` read the `.code-workspace` file directly as the actual source of truth? Leaning toward the latter per the never-duplicate-a-source-of-truth principle, but not decided — `orchestration.yaml` might still be the right place for information the workspace file genuinely doesn't express (a "primary" repo designation, or a per-repo `context_mode` default).
+**Open question, unresolved:** should `orchestration.yaml` re-list the repos at all, or should `project-planner`/`repo-discovery` read the `.code-workspace` file directly as the actual source of truth? Leaning toward the latter per the never-duplicate-a-source-of-truth principle, but not decided — `orchestration.yaml` might still be the right place for information the workspace file genuinely doesn't express (a "primary" repo designation, or a per-repo `context_mode` default).
 
 ## Cost telemetry
 
@@ -55,6 +55,6 @@ The `skill-creator` example skill (available in Claude Code more broadly, not pa
 
 ## Agent/skill classification left unrevisited
 
-During the skills → agents migration, `spec-writer` and `implementation-planner` were explicitly flagged as "genuinely unsure, could go either way" and deliberately left as skills without a real decision either way. Neither is settled — they're just untouched, not confirmed-correct.
+During the skills → agents migration, `spec-writer` and `plan-writer` (then named `implementation-planner`) were explicitly flagged as "genuinely unsure, could go either way" and deliberately left as skills without a real decision either way. Neither is settled — they're just untouched, not confirmed-correct.
 
-`bug-fixer` was in the same unrevisited bucket and has since moved to `agents/` (see `CHANGELOG.md`) - unlike `spec-writer`/`implementation-planner`, its call sites were actually audited first: all of them already passed explicit input rather than leaning on session history, and one real gap (`build-feature`'s call site wasn't explicitly passing validator's findings) was fixed before the move, not glossed over.
+`bug-fixer` was in the same unrevisited bucket and has since moved to `agents/` (see `CHANGELOG.md`) - unlike `spec-writer`/`plan-writer`, its call sites were actually audited first: all of them already passed explicit input rather than leaning on session history, and one real gap (`build-feature`'s call site wasn't explicitly passing validator's findings) was fixed before the move, not glossed over.

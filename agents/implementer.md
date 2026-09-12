@@ -40,6 +40,6 @@ Ensure:
 - error handling exists
 - backward compatibility is preserved unless explicitly approved
 
-If completing this task correctly would require touching a file outside the declared `files_touched` set, stop and return that finding rather than proceeding — that means the plan under-scoped the task, and it needs to go back to implementation-planner rather than being routed around silently. This matters most when tasks run as concurrent calls: an implementer that quietly reaches outside its file set is exactly what causes collisions with another task's implementer. If you're re-invoked on a task after an amendment, you have no memory of the earlier call — read the files you're scoped to and work from their current state, the same way you'd approach any other task.
+If completing this task correctly would require touching a file outside the declared `files_touched` set, stop and return that finding rather than proceeding — that means the plan under-scoped the task, and it needs to go back to plan-writer rather than being routed around silently. This matters most when tasks run as concurrent calls: an implementer that quietly reaches outside its file set is exactly what causes collisions with another task's implementer. If you're re-invoked on a task after an amendment, you have no memory of the earlier call — read the files you're scoped to and work from their current state, the same way you'd approach any other task.
 
 Remain tightly scoped to the approved work.

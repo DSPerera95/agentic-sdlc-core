@@ -1,4 +1,4 @@
-# Project-specific settings read by feature-orchestrator and project-scoper.
+# Project-specific settings read by feature-orchestrator and project-planner.
 # Skill logic in .claude/skills/ (installed via agentic-sdlc-core's install.ps1) should never
 # hardcode any of these values directly — that's what caused the original
 # build-feature bug this project was generalized away from.

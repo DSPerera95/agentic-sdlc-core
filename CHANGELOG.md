@@ -1,5 +1,13 @@
 # Changelog
 
+## 9.0.0 — project-scoper renamed to project-planner; implementation-planner renamed to plan-writer
+
+**Changed (breaking)**
+- `skills/project-scoper/` renamed to `skills/project-planner/` (`name: project-scoper` frontmatter also updated), and `skills/implementation-planner/` renamed to `skills/plan-writer/`. Invoke them as `/project-planner` and `/plan-writer` from now on - the old names no longer resolve to anything. Internal body text in both skills shifted from "scope"/"scoping" language describing the skill's own identity (e.g. "Program-level scoping" heading, "scope-defining" grill-me posture) to "plan"/"planning" wording; genuine domain terminology unrelated to either skill's own name (e.g. "what's in scope, what's explicitly out of scope" as a requirements-engineering concept, `spec-writer`'s "out-of-scope items" section) was deliberately left untouched - it describes a concept, not either skill's identity.
+- Every cross-reference across the repo updated to match: `README.md`, `HOW-IT-WORKS.md`, `CLAUDE.md`, `docs/DESIGN-PRINCIPLES.md`, `docs/OPEN-DISCUSSIONS.md` (the one still-relevant historical mention there is annotated "then named `implementation-planner`" rather than silently rewritten), `project-template/.claude/config/orchestration.yaml`, `project-template/.claude/state/README.md`, `project-template/.claude/state/stories/README.md`, `skills/decision-recorder/SKILL.md`, `skills/feature-orchestrator/SKILL.md`, `agents/story-converter.md`, `agents/implementer.md`, `schemas/story-backlog.schema.json`, `schemas/decision-log.schema.json`, `schemas/task-graph.schema.json`, `scripts/rotate-decision-log.ps1`. Verified clean with a repo-wide grep for both old names after editing - the only remaining hits are frozen historical documents (this file's own past entries, and two already-shipped feature spec/plan docs) that are deliberately never rewritten, plus the one intentional annotation above.
+
+**Why**: `project-scoper` read oddly as a name (an uncommon word choice, even though it followed this repo's existing agent-noun convention - `risk-classifier`, `story-converter`, `validator`, `implementer`, `bug-fixer`). `project-planner` was considered first but collides with `implementation-planner` doing a materially different job (one plans the whole project's backlog, once; the other plans one story's task graph, per-story) - renaming `implementation-planner` to `plan-writer` at the same time resolves that collision and, as a side effect, mirrors `spec-writer` cleanly: `spec-writer` writes `spec.md`, `plan-writer` writes `plan.json`.
+
 ## 8.0.0 — MCP server credentials move to a gitignored .env.local, not .mcp.json
 
 **Changed (breaking)**
