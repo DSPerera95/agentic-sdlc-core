@@ -1,5 +1,13 @@
 # Changelog
 
+## 8.0.0 — MCP server credentials move to a gitignored .env.local, not .mcp.json
+
+**Changed (breaking)**
+- `setup-mcp-server.ps1`'s `-EnvVars` no longer writes into `.mcp.json`'s `env` block. It now writes real values as `KEY=VALUE` lines to `.claude/mcp-servers/<Name>.env.local` - a sibling of `.claude/mcp-servers/<Name>/`, not nested inside it, so a later re-run (e.g. to pick up a newer build) never deletes it. Only written the first time; never overwritten once it exists - hand-edit the file directly to change a value. `.mcp.json`'s entry for the server no longer carries an `env` block at all - `turso-state` now loads its own config from that file at startup. The script also ensures the project's `.gitignore` excludes `.claude/mcp-servers/*.env.local`, creating a `.gitignore` if none exists yet (the one case where this repo's tooling will create one that wasn't there before - a real credential landing in git otherwise is worse than one extra file).
+- `mcp-servers/turso-state/src/index.ts` now loads `dotenv` pointing at that sibling file before reading `TURSO_DATABASE_URL`/`TURSO_AUTH_TOKEN` from `process.env` - a no-op if the file doesn't exist (e.g. a real environment variable is already set some other way, which still works and takes precedence). New `dotenv` runtime dependency (4 total now, still zero-`devDependencies`-in-`dist/`).
+
+**Why**: the previous design had two real problems, found while explaining this to a user asking how to actually configure it. First, `TURSO_AUTH_TOKEN` living in `.mcp.json` only worked via Claude Code's `${VAR}` expansion, which still required the real value to be exported as a global, machine-wide shell environment variable before launching Claude Code at all - an engineer working on two projects that each use `turso-state` with different tokens would collide, since there's only one `TURSO_AUTH_TOKEN` name in that shell's environment. A per-project `.env.local` file fixes that for free. Second, considered loading it via Node's built-in `--env-file` CLI flag instead of adding a `dotenv` dependency, but `--env-file` has been an experimental flag on every Node version from 20.6.0 through 22.20.x (stabilized only in 22.21.0/24.10.0) and has an open upstream bug mis-parsing multiline values (nodejs/node#59897) - not what should sit under a credentials file. `dotenv` is small, has no dependencies of its own, and avoids both problems entirely.
+
 ## 7.6.0 — generic MCP server setup script; fixed turso-state dist packaging
 
 **Added**

@@ -236,11 +236,11 @@ Setting `state_backend: turso` in `orchestration.yaml` routes `story-backlog.jso
 ```powershell
 .claude\scripts\setup-mcp-server.ps1 -Name turso-state -EnvVars @{
     TURSO_DATABASE_URL = "libsql://<db-name>-<org>.turso.io"
-    TURSO_AUTH_TOKEN   = '${TURSO_AUTH_TOKEN}'
+    TURSO_AUTH_TOKEN   = "<your actual token>"
 }
 ```
 
-This fetches `mcp-servers/turso-state/dist/` at whatever ref `.claude/agentic-sdlc-core.version` has pinned, runs `npm install` for its runtime-only dependencies, and registers it in `.mcp.json`. `TURSO_AUTH_TOKEN` is never written by this script - always sourced from each engineer's own local environment. Re-run it any time you need to pick up a newer build of `turso-state` from a newer core version, too - it always does a clean sync, never a merge with whatever was there before.
+This fetches `mcp-servers/turso-state/dist/` at whatever ref `.claude/agentic-sdlc-core.version` has pinned, runs `npm install` for its runtime-only dependencies, and registers it in `.mcp.json`. The two values above are never written into `.mcp.json` - they're written once to `.claude/mcp-servers/turso-state.env.local` (a sibling of `.claude/mcp-servers/turso-state/`, so a later re-run to pick up a newer build never touches it), which `setup-mcp-server.ps1` also adds to this project's `.gitignore`. `turso-state` loads that file itself at startup. Re-run the script any time you need a newer build - it's always a clean sync of the server itself, but `.env.local` is only ever written once; edit it directly if a value needs to change.
 
 This is opt-in and off by default - only turn it on once real concurrent-branch contention on this state is an actual, not hypothetical, problem for your team. See `docs/features/specs/2026-09-11-turso-state-backend-design.md` in agentic-sdlc-core for the full design, including the export mechanism that keeps `rotate-decision-log.ps1`/`export-adrs.ps1` working unmodified against a `turso`-backed project.
 
