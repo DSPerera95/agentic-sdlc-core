@@ -17,19 +17,28 @@
       3. Runs "npm install" inside .claude\mcp-servers\<Name>\. The dist\
          folder this repo ships is prebuilt (already compiled from
          TypeScript) and carries its own runtime-only package.json - only
-         the three packages actually imported at runtime get installed,
-         nothing from agentic-sdlc-core's own devDependencies.
-      4. Registers an entry for <Name> in .mcp.json at the project root,
-         pointing at the installed index.js, with whatever -EnvVars were
-         passed through as its "env" block. If an entry with this name
+         the packages actually imported at runtime get installed, nothing
+         from agentic-sdlc-core's own devDependencies.
+      4. If -EnvVars was given and .claude\mcp-servers\<Name>.env.local
+         doesn't already exist, writes it there as KEY=VALUE lines - a
+         sibling of <Name>\, not nested inside it, so step 2's clean sync
+         on a future re-run (e.g. to pick up a newer build) never deletes
+         it. Never overwritten once it exists - hand-edit it directly to
+         change a value. Also ensures this project's .gitignore excludes
+         .claude\mcp-servers\*.env.local (creating a .gitignore if none
+         exists yet - a real credential landing in git otherwise is a
+         worse outcome than this script creating one file it normally
+         wouldn't). The server itself (not this script) loads that file
+         at its own startup.
+      5. Registers an entry for <Name> in .mcp.json at the project root,
+         pointing at the installed index.js. If an entry with this name
          already exists, it is left untouched unless -Force is passed.
 
     This script does not decide *when* to set up a given MCP server - that's
-    the caller's job (install.ps1 calls it when it detects
-    state_backend: turso in orchestration.yaml, passing the env vars that
-    server needs). Run it directly if you flip a state_backend (or similar)
-    setting on after the initial install, without re-running the whole
-    installer.
+    the caller's job. install.ps1 does not call this itself; run it directly
+    once you've opted into whatever setting a server requires (e.g.
+    state_backend: turso in orchestration.yaml) - during initial setup or
+    any time after, there's only this one path.
 
 .PARAMETER Name
     The MCP server's directory name under mcp-servers\ in agentic-sdlc-core,
@@ -44,19 +53,25 @@
     to the "ref:" value recorded in .claude\agentic-sdlc-core.version.
 
 .PARAMETER EnvVars
-    Hashtable of environment variables to write into this server's "env"
-    block in .mcp.json. Use the literal string '${VAR_NAME}' as a value to
-    have Claude Code expand it from the environment at MCP-server-launch
-    time rather than writing a real value into .mcp.json.
+    Hashtable of real environment variable values (e.g. credentials) this
+    server needs at runtime. Written as KEY=VALUE lines to
+    .claude\mcp-servers\<Name>.env.local - gitignored, never committed, and
+    never written into .mcp.json. Only used the first time this file is
+    created for a given server; ignored on a later run if the file already
+    exists (edit it directly instead). Passing real secret values as a
+    command-line argument can land them in your shell history - consider
+    that before typing one directly, e.g. prefer pulling it from a local
+    secret manager into a variable first rather than a literal.
 
 .PARAMETER Force
     Overwrite an existing .mcp.json entry for this server name instead of
-    leaving it untouched.
+    leaving it untouched. Does not affect the .env.local file, which is
+    never overwritten by this script regardless.
 
 .EXAMPLE
     .\setup-mcp-server.ps1 -Name turso-state -EnvVars @{
         TURSO_DATABASE_URL = "libsql://my-db-my-org.turso.io"
-        TURSO_AUTH_TOKEN   = '${TURSO_AUTH_TOKEN}'
+        TURSO_AUTH_TOKEN   = "my-actual-token"
     }
 
 .EXAMPLE
@@ -179,6 +194,35 @@ try {
 }
 Write-Ok "Dependencies installed"
 
+# --- Write .env.local (sibling of $serverDest, survives its clean-sync) ----
+
+$envFilePath = Join-Path $claudeDir "mcp-servers\$Name.env.local"
+
+if (Test-Path $envFilePath) {
+    Write-Info "$envFilePath already exists - left untouched. Edit it directly to change a value."
+} elseif ($EnvVars.Count -eq 0) {
+    Write-Warn "No -EnvVars given and $envFilePath doesn't exist - $Name will only pick up config already present in the real environment, if any."
+} else {
+    $envLines = foreach ($key in $EnvVars.Keys) { "$key=$($EnvVars[$key])" }
+    Set-Content -Path $envFilePath -Value $envLines
+    Write-Ok "Wrote $envFilePath"
+
+    $gitignorePath = ".gitignore"
+    $ignoreEntry = "$claudeDir/mcp-servers/*.env.local"
+    if (Test-Path $gitignorePath) {
+        $gitignoreContent = Get-Content $gitignorePath -Raw -ErrorAction SilentlyContinue
+        if ($gitignoreContent -and $gitignoreContent.Contains($ignoreEntry)) {
+            Write-Info ".gitignore already covers $ignoreEntry - left as-is."
+        } else {
+            Add-Content -Path $gitignorePath -Value "`n# agentic-sdlc-core: MCP server credentials - never commit`n$ignoreEntry"
+            Write-Ok "Added $ignoreEntry to .gitignore"
+        }
+    } else {
+        Set-Content -Path $gitignorePath -Value "# agentic-sdlc-core: MCP server credentials - never commit`n$ignoreEntry"
+        Write-Warn "No .gitignore existed - created one covering $ignoreEntry so $envFilePath can't be committed by accident."
+    }
+}
+
 # --- Register in .mcp.json --------------------------------------------------
 
 $mcpConfigPath = ".mcp.json"
@@ -199,15 +243,9 @@ $alreadyRegistered = $mcpConfig.mcpServers.PSObject.Properties.Name -contains $N
 if ($alreadyRegistered -and -not $Force) {
     Write-Info "$Name already registered in $mcpConfigPath - leaving existing entry untouched. Pass -Force to overwrite it."
 } else {
-    $envObject = [PSCustomObject]@{}
-    foreach ($key in $EnvVars.Keys) {
-        $envObject | Add-Member -MemberType NoteProperty -Name $key -Value $EnvVars[$key]
-    }
-
     $entry = [PSCustomObject]@{
         command = "node"
         args    = @($serverEntryPath)
-        env     = $envObject
     }
 
     if ($alreadyRegistered) {

@@ -54,9 +54,11 @@ decision_log_rotation:
 state_backend: file   # file | turso
 
 # Only read when state_backend is turso. The database URL is an identifier,
-# not a secret - safe to commit. The auth token is NEVER stored here; it
-# comes from the TURSO_AUTH_TOKEN environment variable, set locally by each
-# engineer from their own scoped Turso token. install.ps1 never touches
-# credentials.
+# not a secret - safe to commit here. The auth token is NEVER stored here or
+# anywhere else committed to this repo: each engineer runs
+# .claude/scripts/setup-mcp-server.ps1 -Name turso-state -EnvVars @{...}
+# once, from their own scoped Turso token, which writes it to a gitignored
+# .claude/mcp-servers/turso-state.env.local instead. install.ps1 never
+# touches credentials or this setting.
 turso:
   database_url: libsql://<db-name>-<org>.turso.io
