@@ -16,7 +16,7 @@
     the hot log over -MaxEntries (the oldest entries beyond that count go too) -
     whichever threshold it crosses first.
 
-    Run manually and periodically - e.g. before kicking off /project-scoper again on
+    Run manually and periodically - e.g. before kicking off /project-planner again on
     an existing project. Not run automatically by anything else in this system.
 
 .PARAMETER StateDir

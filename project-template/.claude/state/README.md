@@ -4,7 +4,7 @@
 
 Append-only, one compact JSON object per line, matching
 `schemas/decision-log.schema.json` in agentic-sdlc-core. Written by
-`decision-recorder` — at program scoping, at each story's spec/plan approval,
+`decision-recorder` — at program planning, at each story's spec/plan approval,
 at delivery, and at every scope amendment, story amendment, or context
 escalation. Never skipped regardless of a story's `context_mode`; never
 rewritten, only appended to.
@@ -22,7 +22,7 @@ file per rotation, named by the date it ran, each entry stripped down to
 directly only when there's a specific reason to look at older history.
 
 Rotation isn't automatic — run the script yourself, periodically, or before
-kicking off `/project-scoper` again on an existing project:
+kicking off `/project-planner` again on an existing project:
 
 ```powershell
 .claude/scripts/rotate-decision-log.ps1
@@ -43,8 +43,8 @@ snapshot of what spec mode produced: `story-converter`'s plan mode (ticket
 syncs on scope/story amendment or completion) never rewrites this file, only
 the ticket system reflects what changed after creation.
 
-If `project-scoper` runs again against a project that's already been
-scoped, `story-converter` reads this file first so it doesn't duplicate an
+If `project-planner` runs again against a project that's already been
+planned, `story-converter` reads this file first so it doesn't duplicate an
 existing story id or recreate a ticket that already exists.
 
 ## stories/ (path configurable)

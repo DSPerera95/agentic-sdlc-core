@@ -7,10 +7,10 @@ folder (and this file) won't exist; the same layout below applies wherever
 it's configured to.
 
 One directory per story, named `<story-id>-<short-slug>/`, created when
-project-scoper approves the backlog. Each contains:
+project-planner approves the backlog. Each contains:
 
 - `spec.md` — this story's approved spec (from spec-writer)
-- `plan.json` — this story's task graph (from implementation-planner; see
+- `plan.json` — this story's task graph (from plan-writer; see
   schemas/task-graph.schema.json in agentic-sdlc-core). Drives how
   feature-orchestrator sequences and parallelizes implementer — it is
   internal execution state, not mirrored into the ticket system.

@@ -8,7 +8,7 @@ Every time this system has had two places claiming to know the same fact, one of
 
 ## Computed-but-unused data is a bug, not a placeholder
 
-`risk-classifier` originally ran and produced a tier that `feature-orchestrator` never branched on — L1 and L3 work went through the identical full pipeline. `depends_on` was schema-valid metadata `project-scoper` never actually checked before handing a story off. Both were real, shipped bugs, not intentional scaffolding for later. If something is computed, something must consume it before calling the work done.
+`risk-classifier` originally ran and produced a tier that `feature-orchestrator` never branched on — L1 and L3 work went through the identical full pipeline. `depends_on` was schema-valid metadata `project-planner` never actually checked before handing a story off. Both were real, shipped bugs, not intentional scaffolding for later. If something is computed, something must consume it before calling the work done.
 
 ## Narrow default + cheap escalation beats broad default + blocking
 

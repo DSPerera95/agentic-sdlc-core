@@ -13,7 +13,7 @@
     "date": { "type": "string", "format": "date" },
     "story_id": {
       "type": "string",
-      "description": "The story this decision was recorded during, 'program' if recorded during project-scoper, or 'system' for automated log-maintenance entries such as a rotation breadcrumb."
+      "description": "The story this decision was recorded during, 'program' if recorded during project-planner, or 'system' for automated log-maintenance entries such as a rotation breadcrumb."
     },
     "significance": {
       "type": "string",

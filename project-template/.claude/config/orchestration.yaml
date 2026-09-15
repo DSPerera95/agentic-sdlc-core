@@ -1,4 +1,4 @@
-# Project-specific settings read by feature-orchestrator and project-scoper.
+# Project-specific settings read by feature-orchestrator and project-planner.
 # Skill logic in .claude/skills/ (installed via agentic-sdlc-core's install.ps1) should never
 # hardcode any of these values directly — that's what caused the original
 # build-feature bug this project was generalized away from.
@@ -29,6 +29,12 @@ state_dir: .claude/state
 # folder per story. Independently configurable, not assumed to sit inside
 # state_dir above - point it wherever suits this project's layout.
 stories_dir: .claude/state/stories
+
+# Where architecture-mode diagrams (Mermaid) are saved. Only used when
+# architecture mode is on and at least one diagram is generated. Independently
+# configurable, not assumed to sit inside state_dir - point it wherever suits
+# this project's documentation layout.
+diagrams_dir: docs/architecture/diagrams
 
 # Thresholds for scripts/rotate-decision-log.ps1 — not read automatically by any
 # skill or agent, since that script doesn't parse this file. Keep these two values
