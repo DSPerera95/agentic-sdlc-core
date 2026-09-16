@@ -166,7 +166,7 @@ flowchart TD
 
 **Review depth scales with risk, not a flat setting.** `feature-orchestrator` passes an explicit effort level on every call — low for L1 (via `build-feature`), medium for L2, high for L3 — based on the risk tier `risk-classifier` already determined at step 2. `validator` has no session history, so it can't infer this itself; it always comes from the caller. This is the same lesson `risk-classifier` taught earlier in this system's history: computing a risk tier and then applying the same fixed rigor regardless of it wastes the classification.
 
-**One ticket per story, created once.** The `story-converter` agent only ever creates a ticket in spec mode, at `project-planner` time — there's no per-task ticket layer, and no routine ticket step inside `feature-orchestrator`. Plan mode exists solely to update that one ticket, and only fires from three places: a scope amendment, a story amendment, or the completion sync above. The task graph that drives execution stays internal to `plan.json` — it's not mirrored into the tracker.
+**One ticket per story, created once.** The `story-converter` agent only ever creates a ticket in spec mode, at `project-planner` time — there's no per-task ticket layer, and no routine ticket step inside `feature-orchestrator`. Plan mode exists solely to update that one ticket, and only fires from three places: a scope amendment, a story amendment, or the completion sync above. The task graph that drives execution stays internal to the story's current plan file (under `plan/`, versioned - see Reference below) — it's not mirrored into the tracker.
 
 **The task graph drives execution, not a linear list.** `plan-writer`'s output is a graph, not an ordered checklist:
 
