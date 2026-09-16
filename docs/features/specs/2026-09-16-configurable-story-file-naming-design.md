@@ -11,6 +11,7 @@ Today, every story's on-disk state lives at a fixed layout: `<stories_dir>/<stor
 - Make the spec/plan file basename configurable via `orchestration.yaml`, built from placeholders (`{ticket_id}`, `{slug}`) rather than a fixed literal — e.g. `{ticket_id}-{slug}` producing `MPMD-123-Project-scaffold`.
 - Automatically append a version number to that configured name on every file written — `-v<N>` before the extension (`MPMD-123-Project-scaffold-v1.md`).
 - Every *approved content change* to a spec or plan writes a new version (`v2`, `v3`, ...) rather than overwriting the previous one; prior versions stay on disk as history. Routine `plan` task-`status` bookkeeping during execution is not a content change and does not bump the version.
+- Correctly handle a story `feature-orchestrator` runs standalone, with a `ticket_id` given directly at invocation rather than coming from a `project-planner` backlog — `ticket.json` doesn't already exist in that case, and this feature's rendering scheme depends on it existing.
 
 ## Non-goals
 
@@ -62,6 +63,14 @@ Creates `<stories_dir>/<story-id>/` (story id only, no slug — this is the one 
 - **Step 11** (execution): reads and updates task `status` fields on the **current** plan version's file, in place — this is bookkeeping, not a content amendment, and never creates a new version.
 - **Scope amendment loop**: `plan-writer` patches the affected task's `files_touched`. This *is* a content amendment — write the result to a **new** version (`v2`, `v3`, ...), not in place. From this point on, step 11 reads/writes task status against the new current version.
 - **Story amendment loop**: `spec-writer` amends the spec, and (if a plan already exists) `plan-writer` patches it. Both are content amendments — each writes a new version of whichever file(s) it touched.
+
+### Standalone invocation (no `project-planner` backlog)
+
+`feature-orchestrator` has always supported running against a story that didn't come from a `project-planner` backlog — a `ticket_id` given directly at invocation. That path was never fully specified before this feature, and this feature's first draft made it worse by having step 0 assume `ticket.json` always already exists. Fixed as part of this same design, not a separate feature:
+
+- `story_id` is the given `ticket_id` itself — there's no backlog-assigned id to reuse in this path, and inventing a second identifier scheme for it would just be another thing to keep in sync for no benefit.
+- `slug` is derived by `feature-orchestrator` from the story's title — given directly in the invocation prompt if there was one, otherwise from the title `/spec-writer`'s output uses once step 5 completes. No new capability needed (e.g. reading a ticket's title back from Jira/ADO, which nothing in this system does today).
+- `story-converter` gains a third mode, **Register mode**: writes `ticket.json` for a ticket that already exists, without calling out to the ticket system at all — spec mode's job is creating a ticket, this is explicitly the opposite. `feature-orchestrator` calls it once, before step 6, only when `ticket.json` doesn't already exist for this `story_id`.
 
 ### Resolving "the current version"
 
