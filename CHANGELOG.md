@@ -1,5 +1,15 @@
 # Changelog
 
+## 10.0.0 — configurable, versioned spec/plan file naming for stories
+
+**Changed (breaking)**
+- Per-story directories drop the slug: `<stories_dir>/<story-id>-<slug>/` becomes `<stories_dir>/<story-id>/`, story id only. `ticket.json` (still flat at `<stories_dir>/<story-id>/ticket.json`) gains a persisted `slug` field, computed once by `story-converter` the same way it always has been - just no longer thrown away after naming the directory.
+- `spec.md` and `plan.json` move into their own `spec/`/`plan/` subfolders, and their basename becomes configurable via a new `story_file_name_format` key in `orchestration.yaml` (default `{ticket_id}-{slug}`, e.g. `MPMD-123-project-scaffold`), with an automatic `-v<N>` version suffix always appended: `spec/MPMD-123-project-scaffold-v1.md`.
+- Every approved content change - the initial spec/plan approval, and every Scope or Story amendment - writes a new version rather than overwriting the previous one. Old versions stay on disk as history. "Current version" is resolved by scanning for the highest `-v<N>` on disk - no separate pointer file. Routine `plan` task-`status` bookkeeping during execution is explicitly not a content change and continues to mutate the current version's file in place.
+- Existing projects with stories already created under the old `<story-id>-<slug>/spec.md` layout are not migrated automatically - a project mid-flight needs to either finish in-progress stories under the old paths or move them by hand after upgrading.
+
+**Why**: the old fixed `spec.md`/`plan.json` naming carried no information a team's own ticket-tracking conventions might expect, and every amendment silently overwrote the prior approved version with no history. See `docs/features/specs/2026-09-16-configurable-story-file-naming-design.md` for the full design, including why "current version" is resolved by directory scan rather than a tracked pointer, and the precise distinction between a content amendment (new version) and routine status bookkeeping (in place).
+
 ## 9.0.0 — project-scoper renamed to project-planner; implementation-planner renamed to plan-writer
 
 **Added**
