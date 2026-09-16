@@ -58,7 +58,7 @@ If `ticket.json` already exists at that path, do nothing and report that it's al
 
 ## Plan mode — syncing a story's existing ticket
 
-Used per story, but only when feature-orchestrator calls you — never on a routine schedule, and never right after a plan is approved. There is exactly one ticket per story, created back in spec mode; this mode updates that same ticket, it never creates a new one. It never touches `.claude/state/story-backlog.json` either — that file stays spec mode's point-in-time snapshot; the ticket is the only thing this mode updates.
+Used per story, but only when feature-orchestrator calls you — never on a routine schedule, and never right after a plan is approved. There is exactly one ticket per story, created earlier (spec mode for a story from a backlog, register mode for a standalone run); this mode updates that same ticket, it never creates a new one. It never touches `.claude/state/story-backlog.json` either — that file stays spec mode's point-in-time snapshot (and doesn't exist at all for a standalone run); the ticket is the only thing this mode updates.
 
 feature-orchestrator invokes this in three situations, and no others:
 - **Scope amendment** — implementer needed a file outside its declared `files_touched`. Reflect the amended scope on the story's ticket.
@@ -67,7 +67,7 @@ feature-orchestrator invokes this in three situations, and no others:
 
 In every case, this is an update to the one existing ticket, not a fresh conversion: use the ticket id you're given, describe the specific delta (what changed, not the whole plan restated), and leave everything else on the ticket untouched. The full task graph (`depends_on`, `parallel_group`, `files_touched` per task) stays internal to plan-writer's output — it drives how feature-orchestrator sequences and parallelizes implementer, but it isn't mirrored into the tracker as separate tasks or subtasks.
 
-Append one line to that story's `ticket.json` sync log at `<stories_dir>/<story-id>/ticket.json` (the directory already exists from spec mode) noting what synced and why. The ticket id itself never changes here; you're only ever adding to the log.
+Append one line to that story's `ticket.json` sync log at `<stories_dir>/<story-id>/ticket.json` (the directory already exists from spec mode or register mode) noting what synced and why. The ticket id itself never changes here; you're only ever adding to the log.
 
 ## All modes
 
