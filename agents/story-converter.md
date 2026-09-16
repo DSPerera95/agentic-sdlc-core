@@ -18,7 +18,17 @@ Convert the approved program-level spec into:
 
 Create one ticket per story in the configured ticket system, and return the resulting ticket id on each story entry. Do not generate technical tasks or subtasks in this mode. No implementation plan exists yet for any story, so there's nothing to decompose into tasks — a story's ticket stays at the acceptance-criteria level until something during implementation gives reason to update it.
 
-For each story, create its directory at `<stories_dir>/<story-id>-<slug>/` (you choose the slug, from the story's title) and write `ticket.json` there: the story's `ticket_id` plus an empty sync log. `stories_dir` is given to you explicitly by whoever invoked you - you have no project config access of your own. This step is unaffected by `state_backend` — `ticket.json` always lives under `stories_dir` as a plain file, in both modes.
+For each story, create its directory at `<stories_dir>/<story-id>/` (story id only - the slug you compute for it lives inside `ticket.json`, not the directory name) and write `ticket.json` there:
+
+```json
+{
+  "ticket_id": "MPMD-123",
+  "slug": "project-scaffold",
+  "sync_log": []
+}
+```
+
+`ticket_id` is the id returned by the ticket system on creation. `slug` is yours to choose, from the story's title, same as it always has been — it's now persisted here instead of only ever appearing in a directory name, since `feature-orchestrator` needs it later to render spec/plan filenames and has no other way to recover it. `stories_dir` is given to you explicitly by whoever invoked you - you have no project config access of your own. This step is unaffected by `state_backend` — `ticket.json` always lives under `stories_dir` as a plain file, in both modes. Do not create `spec/` or `plan/` subfolders here - neither exists yet at this point in the flow (spec mode runs once per project, before any story's `feature-orchestrator` run); `feature-orchestrator` creates them itself on first write.
 
 Write the whole backlog — `project`, `program_spec_ref`, `architecture_mode`, and the `stories` array with every field set above. Where depends on this project's `state_backend`, given to you explicitly by whoever invoked you (you have no project config access of your own):
 - `file` (default): to `.claude/state/story-backlog.json`, matching `story-backlog.schema.json` exactly: a single JSON object, not JSON Lines. Written once per project (or once per project-planner re-run against an already-planned project), not appended to incrementally the way `decision-log.jsonl` is.
@@ -41,7 +51,7 @@ feature-orchestrator invokes this in three situations, and no others:
 
 In every case, this is an update to the one existing ticket, not a fresh conversion: use the ticket id you're given, describe the specific delta (what changed, not the whole plan restated), and leave everything else on the ticket untouched. The full task graph (`depends_on`, `parallel_group`, `files_touched` per task) stays internal to plan-writer's output — it drives how feature-orchestrator sequences and parallelizes implementer, but it isn't mirrored into the tracker as separate tasks or subtasks.
 
-Append one line to that story's `ticket.json` sync log at `<stories_dir>/<story-id>-<slug>/ticket.json` (the directory already exists from spec mode - find it by its `<story-id>-` prefix under `stories_dir`) noting what synced and why. The ticket id itself never changes here; you're only ever adding to the log.
+Append one line to that story's `ticket.json` sync log at `<stories_dir>/<story-id>/ticket.json` (the directory already exists from spec mode) noting what synced and why. The ticket id itself never changes here; you're only ever adding to the log.
 
 ## Both modes
 
