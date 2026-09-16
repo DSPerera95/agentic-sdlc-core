@@ -25,10 +25,18 @@ ticket_system:
 
 state_dir: .claude/state
 
-# Where per-story state (spec.md, plan.json, ticket.json) is written, one
-# folder per story. Independently configurable, not assumed to sit inside
-# state_dir above - point it wherever suits this project's layout.
+# Where per-story state is written, one folder per story (<story-id>/, no
+# slug - see story_file_name_format below for where the slug shows up
+# instead). Independently configurable, not assumed to sit inside state_dir
+# above - point it wherever suits this project's layout.
 stories_dir: .claude/state/stories
+
+# Template for the spec/plan file basename, before the automatic "-v<N>"
+# version suffix and extension are appended. Available placeholders:
+# {ticket_id}, {slug}. Rendered once per story and reused for both spec/
+# and plan/ - only the extension (.md vs .json) and version number differ
+# between them.
+story_file_name_format: "{ticket_id}-{slug}"
 
 # Where architecture-mode diagrams (Mermaid) are saved. Only used when
 # architecture mode is on and at least one diagram is generated. Independently
